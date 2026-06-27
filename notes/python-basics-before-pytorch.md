@@ -1,7 +1,7 @@
 
 # Python Basics before PyTorch
 
-This note summarizes basic Python tools that are useful before learning PyTorch. 
+This note summarizes basic Python tools that are useful before learning PyTorch.
 The goal is not to memorize syntax, but to learn tools for running and recording experiments.
 
 ## pathlib
