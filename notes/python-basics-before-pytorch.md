@@ -6,13 +6,10 @@ The goal is not to memorize syntax, but to learn tools for running and recording
 
 ## pathlib
 
-### What is pathlib?
+### 1. What is it?
+`pathlib` is a Python module for handling file and folder paths.
 
-`pathlib` is used to handle file and folder paths in Python.
-It is useful when saving experiment results, checkpoints, logs, and plots.
-
-### Why it matters for research code
-
+### 2. Why is it useful?
 In experiments, we often need to create folders like:
 
 - `results/`
@@ -22,14 +19,18 @@ In experiments, we often need to create folders like:
 
 Using `pathlib` makes this cleaner than writing raw string paths.
 
-### Example
+### 3. Minimal example
+I created `results/` and `plots/` folders using `Path.mkdir()`.
 
-```python
-from pathlib import Path
+The code is in:
+`python_basics/01_pathlib_example.py`
 
-output_dir = Path("results")
-output_dir.mkdir(exist_ok=True)
+### 4. What I learned
+I learned how to create folders and build file paths using `Path`.  I also learned that mkdir() can have two options: parents and exist_ok.  
 
-result_file = output_dir / "results.csv"
+When parents = True, it creates parent folder with the folder I created.  
+When exist_ok = True, it handles the case when the folder already exists.
 
-print(result_file)
+
+### 5. Later use in PyTorch experiments
+I can use `pathlib` to save model checkpoints, result CSV files, and loss plots.
