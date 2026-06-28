@@ -55,4 +55,16 @@ The code is in:
 `python_basics/02_time_example.py`
 
 ### 5. Later use in PyTorch experiments
-I can use `time` to measure the exact code execution time. Also, it can be used evaluate the speed of a model, by measuring inference time 
+I can use `time` to measure the exact code execution time. Also, it can be used evaluate the speed of a model, by measuring inference time.
+
+## argparse
+
+### 1. What is it?
+`argparse` is a Python module that makes it easy for setting options/arguments when running Python files in the terminal.
+
+### 2. Wht is it useful?
+In experiments, it can be frustrating to change the values like epochs and model every time we execute the time.
+Therefore, we use `argparse` so that we can change the execution option without actually changing the code.
+
+### 3. Minimal example
+
