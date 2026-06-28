@@ -34,3 +34,25 @@ When exist_ok = True, it handles the case when the folder already exists.
 
 ### 5. Later use in PyTorch experiments
 I can use `pathlib` to save model checkpoints, result CSV files, and loss plots.
+
+## time
+
+### 1. What is it?
+`time` is a Python module for handling time related features. 
+
+### 2. Why is it useful?
+In experiments, we can use `time` module to achieve these things:
+
+- measure time
+- time conversion
+- better formatting of time
+- intentional delay between codes
+
+### 3. Minimal example
+I measured the time elapsed for reading csv file(pokemon.csv).
+
+The code is in:
+`python_basics/02_time_example.py`
+
+### 5. Later use in PyTorch experiments
+I can use `time` to measure the exact code execution time. Also, it can be used evaluate the speed of a model, by measuring inference time 
