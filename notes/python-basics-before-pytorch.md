@@ -82,9 +82,66 @@ Therefore, we use `argparse` so that we can change the execution option without 
 
 ### 3. Minimal example
 I made parse_args() function that takes in Name, Type1, Type2, Height, Weight, Legendary as command line arguments. 
-I also have set the default argument and decided if a argument is required or not.
+I also have set the default argument and decided if an argument is required or not.
 
 The code is in:
 `python_basics/03_argparse_example.py`
 
-### 4. 
+### 4. What I learned
+I learned that `argparse` is a tool that allows you to adjust settings from the command line terminal that were embedded in the code.
+
+### 5. Later use in PyTorch experiments
+In later experiments, I can use `argparse` to change the learning rate, epochs or batch size when performing machine learnging. 
+Also, `argparse` adds `--help` that displays parser’s help message.
+
+## pandas
+
+### What is it?
+`pandas` is a Python library for working with table-like data.
+
+### Why is it useful?
+Research experiments often produce CSV files or json files. I can use pandas to read, filter, summarize, and analyze those results.
+
+### Minimal example
+See: `run_pokemon_experiment.py`
+
+### What I learned
+I learned how to read a CSV file, select columns, filter rows, and group data.
+
+### Later use in PyTorch experiments
+I can use pandas to analyze experiment results such as loss, accuracy, learning rate, batch size, and training time.
+
+## matplotlib
+
+### What is it?
+`matplotlib` is a Python library for creating plots and visualizations.
+
+### Why is it useful?
+It helps visualize experiment results such as loss curves, accuracy comparisons, and latency measurements.
+
+### Minimal example
+See: `run_pokemon_experiment.py`
+
+### What I learned
+I learned how to create a simple plot and save it as an image file.
+
+### Later use in PyTorch experiments
+I can use matplotlib to plot training loss, validation accuracy, and experiment comparisons.
+
+## numpy
+
+### What is it?
+`numpy` is a Python library for numerical computation.
+
+### Why is it useful?
+Many ML libraries, including PyTorch and pandas, are connected to array/tensor-style computation.
+
+### Minimal example
+See: later PyTorch tensor practice.
+
+### What I learned
+I learned that numpy arrays are useful for numerical data, but I do not need to deeply study numpy before starting PyTorch.
+
+### Later use in PyTorch experiments
+Understanding numpy arrays will make PyTorch tensors easier to understand.
+
