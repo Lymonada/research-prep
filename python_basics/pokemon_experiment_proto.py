@@ -40,7 +40,8 @@ def main():
 
     df = pd.DataFrame(data)
     certain_pokemon = df[df["Type1"] == args.type1]
-    
+    end = time.time()
+
     print(certain_pokemon)
     print(f"개수 : {certain_pokemon['No'].count()}")
     print(f"평균 Weight : {certain_pokemon['Weight'].mean()}")
