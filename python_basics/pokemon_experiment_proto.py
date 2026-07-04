@@ -7,6 +7,9 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 data_path = BASE_DIR / "data" / "pokemon.csv"
+results_dir = BASE_DIR / "results"
+results_dir.mkdir(exist_ok=True)
+
 
 def parse_args():
     
@@ -40,13 +43,17 @@ def main():
 
     df = pd.DataFrame(data)
     certain_pokemon = df[df["Type1"] == args.type1]
-    end = time.time()
+    target_type = args.type1.capitalize()
 
+    output_path = results_dir / f"filtered_{target_type.lower()}_pokemon.csv"
+    certain_pokemon.to_csv(output_path, index=False)
+
+    end = time.time()
+    
     print(certain_pokemon)
     print(f"개수 : {certain_pokemon['No'].count()}")
     print(f"평균 Weight : {certain_pokemon['Weight'].mean()}")
     print(f"평균 Height : {certain_pokemon['Height'].mean()}")
-
     print(f"걸린 시간: {end - start:.4f}초")
 
 
