@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-data_path = BASE_DIR / "data" / "train.csv" / "pokemon.csv"
+data_path = BASE_DIR / "data" / "pokemon.csv"
 
 def parse_args():
     
