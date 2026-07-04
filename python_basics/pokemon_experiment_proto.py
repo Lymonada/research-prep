@@ -43,18 +43,36 @@ def main():
 
     df = pd.DataFrame(data)
     target_type = args.type1.capitalize()
-    certain_pokemon = df[df["Type1"] == target_type]
 
+### Filtered by Type1 and save to filtered_pokemon.csv
+    certain_pokemon = df[df["Type1"] == target_type]
     output_path = results_dir / f"filtered_{target_type.lower()}_pokemon.csv"
     certain_pokemon.to_csv(output_path, index=False)
 
+### Summary statistics and save to experiment_log.csv
     end = time.time()
+    elapsed_time = end - start
+    
+    summary_df = pd.DataFrame([
+        {
+            "type1": args.type1,
+            "count": certain_pokemon["No"].count(),
+            "avg_weight": certain_pokemon["Weight"].mean(),
+            "avg_height": certain_pokemon["Height"].mean(),
+            "elapsed_time_sec": elapsed_time
+        }
+    ])
 
-    print(certain_pokemon)
-    print(f"개수 : {certain_pokemon['No'].count()}")
-    print(f"평균 Weight : {certain_pokemon['Weight'].mean()}")
-    print(f"평균 Height : {certain_pokemon['Height'].mean()}")
-    print(f"걸린 시간: {end - start:.4f}초")
+    log_path = results_dir / "experiment_log.csv"
+    summary_df.to_csv(log_path, 
+                      mode='a', ### append to the file if it already exists, otherwise create a new file.
+                      header=not log_path.exists(), ### not true if the file already exists, so we don't write the header again. In our case, header is : type1,count,avg_weight,avg_height
+                      index=False,)
+
+
+    print(f"Filtered data saved to {output_path}")
+    print(f"Experiment log saved to {log_path}")
+    print(f"걸린 시간: {elapsed_time:.4f}초")
 
 
 # Only run when this file is executed -> only when I enter "python 03_argparse_example.py" in the terminal
