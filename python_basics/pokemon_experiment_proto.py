@@ -42,14 +42,14 @@ def main():
             }
 
     df = pd.DataFrame(data)
-    certain_pokemon = df[df["Type1"] == args.type1]
     target_type = args.type1.capitalize()
+    certain_pokemon = df[df["Type1"] == target_type]
 
     output_path = results_dir / f"filtered_{target_type.lower()}_pokemon.csv"
     certain_pokemon.to_csv(output_path, index=False)
 
     end = time.time()
-    
+
     print(certain_pokemon)
     print(f"개수 : {certain_pokemon['No'].count()}")
     print(f"평균 Weight : {certain_pokemon['Weight'].mean()}")
