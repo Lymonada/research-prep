@@ -55,7 +55,7 @@ def main():
     
     summary_df = pd.DataFrame([
         {
-            "type1": args.type1,
+            "type1": target_type,
             "count": certain_pokemon["No"].count(),
             "avg_weight": certain_pokemon["Weight"].mean(),
             "avg_height": certain_pokemon["Height"].mean(),
@@ -64,16 +64,14 @@ def main():
     ])
 
     log_path = results_dir / "experiment_log.csv"
-    summary_df.to_csv(log_path, 
+    summary_df.to_csv(log_path,     
                       mode='a', ### append to the file if it already exists, otherwise create a new file.
                       header=not log_path.exists(), ### not true if the file already exists, so we don't write the header again. In our case, header is : type1,count,avg_weight,avg_height
                       index=False,)
 
-
     print(f"Filtered data saved to {output_path}")
     print(f"Experiment log saved to {log_path}")
     print(f"걸린 시간: {elapsed_time:.4f}초")
-
 
 # Only run when this file is executed -> only when I enter "python 03_argparse_example.py" in the terminal
 if __name__ == "__main__":
