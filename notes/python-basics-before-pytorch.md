@@ -137,7 +137,7 @@ I can use matplotlib to plot training loss, validation accuracy, and experiment 
 Many ML libraries, including PyTorch and pandas, are connected to array/tensor-style computation.
 
 ### Minimal example
-See: later PyTorch tensor practice.
+Later in PyTorch tensor practice.
 
 ### What I learned
 I learned that numpy arrays are useful for numerical data, but I do not need to deeply study numpy before starting PyTorch.
