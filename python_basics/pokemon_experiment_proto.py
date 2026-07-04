@@ -42,7 +42,9 @@ def main():
     certain_pokemon = df[df["Type1"] == args.type1]
     
     print(certain_pokemon)
-    end = time.time()
+    print(f"개수 : {certain_pokemon['No'].count()}")
+    print(f"평균 Weight : {certain_pokemon['Weight'].mean()}")
+    print(f"평균 Height : {certain_pokemon['Height'].mean()}")
 
     print(f"걸린 시간: {end - start:.4f}초")
 
