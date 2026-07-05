@@ -12,7 +12,6 @@ log_path = results_dir / "experiment_log.csv"
 
 log_df = pd.read_csv(log_path)
 plot_df = log_df.groupby("type1", as_index=False)["count"].last() # To handle cases when there are multiple results of same type1
-plt.bar(plot_df["type1"], plot_df["count"])
 
 plt.bar(plot_df["type1"], plot_df["count"])
 plt.xlabel("Type1")
