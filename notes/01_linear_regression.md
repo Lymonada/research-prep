@@ -324,6 +324,7 @@ $$
 w_j := w_j - \eta \frac{\partial L}{\partial w_j}
 $$
 
+
 ---
 
 ## 12. Tensor Shape Comparison
