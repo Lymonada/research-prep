@@ -435,30 +435,6 @@ gradient 계산
 - `loss.backward()`는 모든 가중치와 편향의 gradient를 계산한다.
 - `optimizer.step()`은 계산된 gradient를 이용해 파라미터를 업데이트한다.
 
----
-
-## 15. Difficulties and Clarifications
-
-처음에는 단순 선형회귀와 다중선형회귀를 서로 다른 종류의 모델이라고 생각했다.
-
-하지만 두 모델은 모두 다음과 같은 공통 구조를 사용한다.
-
-$$
-\hat{Y} = XW + b
-$$
-
-단순 선형회귀에서는 입력 feature의 개수가 1이고, 다중선형회귀에서는 입력 feature의 개수가 여러 개라는 차이가 있다.
-
-또한 `nn.Linear(3, 1)`에서 숫자 3은 전체 데이터의 개수가 아니라 한 sample이 가지고 있는 입력 feature의 개수이다.
-
-sample 개수는 입력 tensor의 첫 번째 차원에 나타나고 feature 개수는 마지막 차원에 나타난다.
-
----
-
-## 16. Connection to the Next Step
-
-선형회귀는 $XW+b$의 결과를 그대로 예측값으로 사용한다.
-
 하지만 분류 문제에서는 선형 결합의 결과를 클래스 또는 확률과 연결해야 한다.
 
 다음 단계에서는 선형 결합으로 계산된 값을 sigmoid 함수에 통과시켜 두 클래스 중 하나를 예측하는 **Binary Logistic Regression**을 학습한다.
