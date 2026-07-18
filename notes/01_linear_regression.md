@@ -313,6 +313,7 @@ PyTorch에서는 gradient가 기본적으로 누적되기 때문에 각 학습 �
 손실값을 기준으로 각 가중치와 편향의 gradient를 계산한다.
 
 단순 선형회귀에서는 하나의 입력 특성에 대응하는 가중치의 gradient를 계산하고, 다중선형회귀에서는 여러 가중치 각각의 gradient를 계산한다.  
+
 $$
 \frac{\partial L}{\partial w}
 $$
@@ -320,6 +321,7 @@ $$
 ### `optimizer.step()`
 
 계산된 gradient를 이용해 가중치와 편향을 실제로 업데이트한다.  
+
 $$
 w_j := w_j - \eta \frac{\partial L}{\partial w_j}
 $$
