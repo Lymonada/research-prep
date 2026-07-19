@@ -1,4 +1,5 @@
 
+
 # Binary Logistic Regression
 
 ## 1. 학습 목적
@@ -566,7 +567,7 @@ $$
 가중치 $w$에 대한 손실의 gradient는 chain rule을 이용해 계산할 수 있다.
 
 $$  
-\frac{\partial L}{\partial w}
+\frac{\partial L}{\partial w} =
 \frac{\partial L}{\partial z}  
 \frac{\partial z}{\partial w}  
 $$
@@ -586,21 +587,21 @@ $$
 따라서 가중치에 대한 gradient는 다음과 같다.
 
 $$  
-\frac{\partial L}{\partial w}
+\frac{\partial L}{\partial w} = 
 (\hat{y}-y)x  
 $$
 
 편향에 대한 gradient는 다음과 같다.
 
 $$  
-\frac{\partial L}{\partial b}
+\frac{\partial L}{\partial b} = 
 \hat{y}-y  
 $$
 
 입력 특성이 여러 개인 경우 각 가중치에 대한 gradient는 다음과 같다.
 
 $$  
-\frac{\partial L}{\partial w_j}
+\frac{\partial L}{\partial w_j} = 
 (\hat{y}-y)x_j  
 $$
 
@@ -613,7 +614,7 @@ $$
 반면 편향의 gradient는 다음과 같이 예측 확률과 실제 정답의 차이로 계산된다.
 
 $$  
-\frac{\partial L}{\partial b}
+\frac{\partial L}{\partial b} = 
 \hat{y}-y  
 $$
 
@@ -797,61 +798,9 @@ accuracy = 8 / 10 = 0.8
     
 -   accuracy: threshold를 적용한 후 몇 개의 클래스를 맞혔는지 측정
     
-
 ----------
 
-## 18. Linear Regression and Logistic Regression Comparison
-
-선형회귀와 로지스틱 회귀는 모두 먼저 선형 결합을 계산한다.
-
-$$  
-Z=XW+b  
-$$
-
-하지만 선형 결합의 결과를 사용하는 방법이 다르다.
-
-### Linear Regression
-
-```text
-입력 X
-    ↓
-XW + b
-    ↓
-연속적인 예측값
-
-```
-
-선형회귀에서는 선형 결합의 결과를 최종 예측값으로 사용한다.
-
-예측값의 범위에는 제한이 없다.
-
-대표적인 손실함수로 MSE를 사용한다.
-
-### Logistic Regression
-
-```text
-입력 X
-    ↓
-XW + b
-    ↓
-logit
-    ↓
-sigmoid
-    ↓
-클래스 1일 확률
-
-```
-
-로지스틱 회귀에서는 선형 결합의 결과를 sigmoid 함수에 통과시킨다.
-
-sigmoid 출력은 `0`과 `1` 사이의 값이며 클래스 1일 확률로 해석한다.
-
-대표적인 손실함수로 BCE를 사용한다.
-
-----------
-
-
-## 19. Core Training Flow
+## 18. Core Training Flow
 
 로지스틱 회귀의 전체 학습 흐름은 다음과 같다.
 
@@ -912,7 +861,7 @@ class 0 또는 class 1
 
 ----------
 
-## 20. What I Learned
+## 19. What I Learned
 
 이번 학습을 통해 다음 내용을 확인했다.
 
@@ -936,8 +885,6 @@ class 0 또는 class 1
     
 -   BCE는 예측 확률과 실제 정답 사이의 차이를 측정한다.
     
--   실제 정답 클래스에 낮은 확률을 부여할수록 BCE loss가 커진다.
-    
 -   이진 분류에서는 하나의 출력값으로 두 클래스의 확률을 표현할 수 있다.
     
 -   `nn.Linear(in_features, 1)`은 각 sample에 대해 하나의 logit을 출력한다.
@@ -949,7 +896,5 @@ class 0 또는 class 1
 -   optimizer는 가중치와 편향을 업데이트한다.
     
 -   가중치와 편향이 바뀌면 다음 forward에서 새로운 logit이 계산된다.
-    
--   가중치에 대한 gradient는 예측 오차뿐 아니라 입력값의 영향도 받는다.
     
 -   경사하강법은 선형회귀뿐 아니라 로지스틱 회귀에도 적용된다.
