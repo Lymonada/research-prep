@@ -17,7 +17,7 @@ y_train = torch.Tensor(y_train_np)
 class MyLinearRegressionModel(nn.Module):
 
     def __init__(self, input_nodes):
-        super.__init__()
+        super().__init__()
         self.linear_stack = nn.Sequential(
             nn.Linear(input_nodes, 1)
         )
