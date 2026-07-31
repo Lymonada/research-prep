@@ -57,7 +57,7 @@ def model_train(dataloader, model, loss_function, optimizer):
     model.train()
 
     ## 모든 배치의 누적 loss, 맞게 예측한 이미지 개수, 지금까지 확인한 전체 이미지 수 초기화
-    loss_sum_per_batch = total_correct = total_images = 0
+    total_loss_sum = total_correct = total_images = 0
     ## 전체 배치의 개수는 dataloder의 길이
     total_train_batch = len(dataloader)
 
@@ -73,15 +73,16 @@ def model_train(dataloader, model, loss_function, optimizer):
         loss.backward()
         optimizer.step()
 
-        loss_sum_per_batch += loss.item() ## loss.item()은 배치 하나의 평균 loss. 그래서 배치마다 loss를 누적해서 더한다
+        total_loss_sum += loss.item() ## loss.item()은 배치 하나의 평균 loss. 그래서 배치마다 loss를 누적해서 더한다
 
         total_images += y_val.size(0) ## y_train은 이미지 32장의 실제 정답을 가진 텐서 ex) tensor([7, 2, 0, ..]). 그래서 y_train의 0번째 차원의 크기는 숫자들의 개수
         predictions = torch.argmax(outputs, dim = 1) ## outputs 텐서에서 가장 큰 수의 인덱스, 즉 예측한 숫자.
-        ## dim = 1인 이유는, outputs 텐서의 shape이 [batch_size, 10]이기 때문에, dim = 1로 해야 10개의 
+        ## dim = 1인 이유는, outputs 텐서의 shape이 [batch_size, 10]이기 때문에, dim = 1로 해야 각 이미지마다 10개의 클래스 중 가장 큰 값의 인덱스를 찾음
+        ## dim = 0으로 하면, 각 숫자 클래스에 대해 현재 배치의 어떤 이미지가 가장 높은 점수를 받았는지를 찾음
         correct = predictions == y_val ## 예측한 숫자가 정답과 같으면 True 다르면 False로 해서 correct라는 텐서에 저장 ex) tensor([True, False, True, ...])
         total_correct += correct.sum().item() ## True는 1, False는 0으로 해서 더한값이 총 맞춘 개수
 
-    train_avg_loss = loss_sum_per_batch / total_train_batch ## 배치 하나당 평균 loss를 더한거를 전체 배치로 나눠서 평균 오차
+    train_avg_loss = total_loss_sum / total_train_batch ## 배치 하나당 평균 loss를 더한거를 전체 배치로 나눠서 평균 오차
     train_avg_accuracy = 100 * total_correct / total_images ## 맞게 예측한 이미지 개수를 전체 이미지 개수로 나눠서 평균 정확도
 
     return (train_avg_loss, train_avg_accuracy)
@@ -93,7 +94,7 @@ def model_evaluate(dataloader, model, loss_function, optimizer):
 
     with torch.no_grad(): ## 미분하지 않겠다
 
-        loss_sum_per_batch = total_correct = total_images = 0
+        total_loss_sum = total_correct = total_images = 0
         total_val_batch = len(dataloader)
 
         for images, labels in dataloder:
@@ -104,14 +105,14 @@ def model_evaluate(dataloader, model, loss_function, optimizer):
             outputs = model(x_val)
             loss = loss_function(outputs, y_val)
 
-            loss_sum_per_batch += loss.item()
+            total_loss_sum += loss.item()
 
             total_images += y_val.size(0)
             predictions = torch.argmax(outputs, dim = 1)
             correct = predictions == y_val
             total_correct += correct.sum().item()
 
-        val_avg_loss = loss_sum_per_batch / total_val_batch
+        val_avg_loss = total_loss_sum / total_val_batch
         val_avg_accuracy = 100 * total_correct / total_images 
 
         return (val_avg_loss, val_avg_accuracy)
