@@ -114,37 +114,6 @@ def model_evaluate(dataloader, model, loss_function):
 
         return (val_avg_loss, val_avg_accuracy)
 
-## 테스트는 model_evaluate()과 동일. 출력만 추가됨
-def model_test(dataloader, model, loss_function):
-
-    model.eval()
-
-    with torch.no_grad():
-
-        total_loss_sum = total_correct = total_images = 0
-
-        for images, labels in dataloader:
-
-            x_test = images
-            y_test = labels
-
-            outputs = model(x_test)
-            loss = loss_function(outputs, y_test)
-
-            total_loss_sum += loss.item() * y_test.size(0)
-
-            total_images += y_test.size(0)
-            predictions = torch.argmax(outputs, dim = 1)
-            correct = predictions == y_test
-            total_correct += correct.sum().item()
-
-        test_avg_loss = total_loss_sum / total_images
-        test_avg_accuracy = 100 * total_correct / total_images 
-
-        print('Accuracy : ', test_avg_accuracy)
-        print('Loss : ', test_avg_loss)
-
-
 train_loss_list = []
 train_accuracy_list = []
 
@@ -163,4 +132,7 @@ for epoch in range(EPOCHS):
     val_accuracy_list.append(val_avg_accuracy)
 
 ## 테스트 데이터로 테스트
-model_test(test_dataset_loader, model, loss_function)
+## 테스트는 model_evaluate()과 동일. 출력만 추가됨
+model_evaluate(test_dataset_loader, model, loss_function)
+print('Accuracy : ', val_avg_accuracy)
+print('Loss : ', val_avg_loss)
