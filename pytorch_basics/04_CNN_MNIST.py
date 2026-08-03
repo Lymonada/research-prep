@@ -110,8 +110,8 @@ def model_train(dataloader, model, loss_function, optimizer):
 
     for images, labels in dataloader:
 
-        x_train = images # [32, 1, 28, 28]
-        y_train = labels # [32]
+        x_train = images.to(DEVICE) # [32, 1, 28, 28]
+        y_train = labels.to(DEVICE) # [32]
 
         outputs = model(x_train) 
         ## outputs의 각 행에는 이미지 한장에 대한 10개의 숫자 클래스의 logits가 저장됨 
@@ -147,8 +147,8 @@ def model_evaluate(dataloader, model, loss_function):
 
         for images, labels in dataloader:
 
-            x_val = images
-            y_val = labels
+            x_val = images.to(DEVICE)
+            y_val = labels.to(DEVICE)
 
             outputs = model(x_val)
             loss = loss_function(outputs, y_val)
