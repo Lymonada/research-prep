@@ -2,8 +2,14 @@ import torch
 from torch import nn
 from torchvision import datasets
 from torchvision import transforms
-from torch.utils.data import Dataset, DataLoader, random_split
-     
+from torch.utils.data import DataLoader, random_split
+import csv
+from pathlib import Path
+
+## 시드를 설정해서 이후에 똑같이 재현할 수 있게 함 
+SEED = 42 
+torch.manual_seed(SEED) 
+
 train_dataset = datasets.MNIST(root='MNIST_data/', train=True,  # 학습 데이터
                                transform=transforms.ToTensor(), # 0~255까지의 값을 0~1 사이의 값으로 변환시켜줌
                                download=True)
@@ -15,7 +21,15 @@ test_dataset = datasets.MNIST(root='MNIST_data/', train=False,  # 테스트 데�
 ### 학습데이터를 0.85 : 0.15 비율로 나눠서 0.15는 검증데이터로
 train_dataset_size = int(len(train_dataset) * 0.85)
 validation_dataset_size = int(len(train_dataset) * 0.15)
-train_dataset, validation_dataset = random_split(train_dataset, [train_dataset_size, validation_dataset_size])
+
+# train/validation 분할을 동일하게 재현하기 위한 generator -> 코드를 다시 실행해도 동일한 MNIST 이미지들이 train과 validation에 들어가도록 함.
+split_generator = torch.Generator().manual_seed(SEED)
+
+train_dataset, validation_dataset = random_split(
+    train_dataset,
+    [train_dataset_size, validation_dataset_size],
+    generator=split_generator
+)
 
 class MyDeepLearningModel(nn.Module):
     
@@ -39,16 +53,17 @@ class MyDeepLearningModel(nn.Module):
 ### DataLoader 정의
 BATCH_SIZE = 32
 
-train_dataset_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+train_loader_generator = torch.Generator().manual_seed(SEED) ## train_dataset_loader는 shuffle=true이기 때문에 같은 데이터 순서로 학습하도록 시드 설정
+train_dataset_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True, generator=train_loader_generator)
 
 validation_dataset_loader = DataLoader(dataset=validation_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 test_dataset_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-
+LEARNING_RATE = 1e-2
 model = MyDeepLearningModel()
 loss_function = nn.CrossEntropyLoss() ## 여기에 Softmax 함수가 포함되어 있음
-optimizer = torch.optim.SGD(model.parameters(), lr = 1e-2)
+optimizer = torch.optim.SGD(model.parameters(), lr = LEARNING_RATE)
 
 def model_train(dataloader, model, loss_function, optimizer):
 
@@ -132,7 +147,60 @@ for epoch in range(EPOCHS):
     val_accuracy_list.append(val_avg_accuracy)
 
 ## 테스트 데이터로 테스트
-## 테스트는 model_evaluate()과 동일. 출력만 추가됨
-model_evaluate(test_dataset_loader, model, loss_function)
-print('Accuracy : ', val_avg_accuracy)
-print('Loss : ', val_avg_loss)
+test_avg_loss, test_avg_accuracy = model_evaluate(
+    test_dataset_loader,
+    model,
+    loss_function
+)
+
+print(f"Test Accuracy: {test_avg_accuracy:.2f}%")
+print(f"Test Loss: {test_avg_loss:.4f}")
+
+## 결과를 저장할 폴더와 파일 경로
+result_dir = Path("results")
+result_dir.mkdir(parents=True, exist_ok=True)
+
+log_path = result_dir / "model_comparison.csv"
+
+## 학습 가능한 총 파라미터 수
+trainable_parameters = sum(
+    parameter.numel()
+    for parameter in model.parameters()
+    if parameter.requires_grad
+)
+
+## 어떤걸 결과에 저장할지 결정
+result = {
+    "model": "MLP",
+    "dataset": "MNIST",
+    "seed": SEED,
+    "epochs": EPOCHS,
+    "batch_size": BATCH_SIZE,
+    "learning_rate": LEARNING_RATE,
+    "parameters": trainable_parameters,
+    "test_loss": test_avg_loss,
+    "test_accuracy": test_avg_accuracy
+}
+
+fieldnames = [
+    "model",
+    "dataset",
+    "seed",
+    "epochs",
+    "batch_size",
+    "learning_rate",
+    "parameters",
+    "test_loss",
+    "test_accuracy"
+]
+
+## CSV 파일에 결과 기록
+write_header = not log_path.exists()
+
+with log_path.open("a", newline="", encoding="utf-8") as file:
+    writer = csv.DictWriter(file, fieldnames=fieldnames)
+
+    if write_header:
+        writer.writeheader()
+
+    writer.writerow(result)
