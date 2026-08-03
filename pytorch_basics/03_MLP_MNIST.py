@@ -5,22 +5,36 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, random_split
 import csv
 from pathlib import Path
+import matplotlib.pyplot as plt
+
+
+## 결과를 저장할 폴더와 파일 경로
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = PROJECT_ROOT / "data" / "MNIST"
+RESULT_DIR = PROJECT_ROOT / "results" / "mnist"
+PLOT_DIR = PROJECT_ROOT / "plots" / "mnist"
+
+RESULT_DIR.mkdir(parents=True, exist_ok=True)
+PLOT_DIR.mkdir(parents=True, exist_ok=True)
+
 
 ## 시드를 설정해서 이후에 똑같이 재현할 수 있게 함 
 SEED = 42 
 torch.manual_seed(SEED) 
 
-train_dataset = datasets.MNIST(root='MNIST_data/', train=True,  # 학습 데이터
+train_dataset = datasets.MNIST(root=DATA_DIR, train=True,  # 학습 데이터
                                transform=transforms.ToTensor(), # 0~255까지의 값을 0~1 사이의 값으로 변환시켜줌
                                download=True)
 
-test_dataset = datasets.MNIST(root='MNIST_data/', train=False,  # 테스트 데이터
+test_dataset = datasets.MNIST(root=DATA_DIR, train=False,  # 테스트 데이터
                               transform=transforms.ToTensor(),  # 0~255까지의 값을 0~1 사이의 값으로 변환시켜줌
                               download=True)
+
 
 ### 학습데이터를 0.85 : 0.15 비율로 나눠서 0.15는 검증데이터로
 train_dataset_size = int(len(train_dataset) * 0.85)
 validation_dataset_size = int(len(train_dataset) * 0.15)
+
 
 # train/validation 분할을 동일하게 재현하기 위한 generator -> 코드를 다시 실행해도 동일한 MNIST 이미지들이 train과 validation에 들어가도록 함.
 split_generator = torch.Generator().manual_seed(SEED)
@@ -30,6 +44,7 @@ train_dataset, validation_dataset = random_split(
     [train_dataset_size, validation_dataset_size],
     generator=split_generator
 )
+
 
 class MyDeepLearningModel(nn.Module):
     
@@ -49,6 +64,7 @@ class MyDeepLearningModel(nn.Module):
         logits = self.fc2(data)
 
         return logits
+
     
 ### DataLoader 정의
 BATCH_SIZE = 32
@@ -64,6 +80,8 @@ LEARNING_RATE = 1e-2
 model = MyDeepLearningModel()
 loss_function = nn.CrossEntropyLoss() ## 여기에 Softmax 함수가 포함되어 있음
 optimizer = torch.optim.SGD(model.parameters(), lr = LEARNING_RATE)
+
+
 
 def model_train(dataloader, model, loss_function, optimizer):
 
@@ -129,12 +147,16 @@ def model_evaluate(dataloader, model, loss_function):
 
         return (val_avg_loss, val_avg_accuracy)
 
+
+
 train_loss_list = []
 train_accuracy_list = []
 
 val_loss_list = []
 val_accuracy_list = []
 
+
+## 데이터로 학습
 EPOCHS = 20
 for epoch in range(EPOCHS): 
     
@@ -146,6 +168,8 @@ for epoch in range(EPOCHS):
     val_loss_list.append(val_avg_loss)
     val_accuracy_list.append(val_avg_accuracy)
 
+
+
 ## 테스트 데이터로 테스트
 test_avg_loss, test_avg_accuracy = model_evaluate(
     test_dataset_loader,
@@ -156,11 +180,7 @@ test_avg_loss, test_avg_accuracy = model_evaluate(
 print(f"Test Accuracy: {test_avg_accuracy:.2f}%")
 print(f"Test Loss: {test_avg_loss:.4f}")
 
-## 결과를 저장할 폴더와 파일 경로
-result_dir = Path("results")
-result_dir.mkdir(parents=True, exist_ok=True)
 
-log_path = result_dir / "model_comparison.csv"
 
 ## 학습 가능한 총 파라미터 수
 trainable_parameters = sum(
@@ -168,6 +188,8 @@ trainable_parameters = sum(
     for parameter in model.parameters()
     if parameter.requires_grad
 )
+
+
 
 ## 어떤걸 결과에 저장할지 결정
 result = {
@@ -194,7 +216,10 @@ fieldnames = [
     "test_accuracy"
 ]
 
+
+
 ## CSV 파일에 결과 기록
+log_path = RESULT_DIR / "model_comparison.csv"
 write_header = not log_path.exists()
 
 with log_path.open("a", newline="", encoding="utf-8") as file:
@@ -204,3 +229,41 @@ with log_path.open("a", newline="", encoding="utf-8") as file:
         writer.writeheader()
 
     writer.writerow(result)
+
+
+
+epoch_list = range(1, EPOCHS + 1)
+loss_plot_path = PLOT_DIR / "MLP_loss.png"
+accuracy_plot_path = PLOT_DIR / "MLP_accuracy.png"
+
+## Loss 그래프 그리기
+plt.figure()
+
+plt.plot(epoch_list, train_loss_list, label="Train Loss")
+plt.plot(epoch_list, val_loss_list, label="Validation Loss")
+
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.title("MLP MNIST Loss")
+plt.legend()
+plt.grid()
+
+plt.tight_layout()
+plt.savefig(loss_plot_path)
+plt.show()
+
+## Accuracy 그래프 그리기
+plt.figure()
+
+plt.plot(epoch_list, train_accuracy_list, label="Train Accuracy")
+plt.plot(epoch_list, val_accuracy_list, label="Validation Accuracy")
+
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy (%)")
+plt.title("MLP MNIST Accuracy")
+plt.legend()
+plt.grid()
+
+plt.tight_layout()
+plt.savefig(accuracy_plot_path)
+plt.show()
