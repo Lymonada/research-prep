@@ -220,15 +220,15 @@ fieldnames = [
 
 ## CSV 파일에 결과 기록
 log_path = RESULT_DIR / "model_comparison.csv"
-write_header = not log_path.exists()
+write_header = not log_path.exists() ## 첫 실행에만 ..exists()가 False로 나오기 때문에 write_header는 True, 즉 헤더를 적는다
 
 with log_path.open("a", newline="", encoding="utf-8") as file:
     writer = csv.DictWriter(file, fieldnames=fieldnames)
 
-    if write_header:
+    if write_header: ## 첫 실행일때만 헤더를 적도록
         writer.writeheader()
 
-    writer.writerow(result)
+    writer.writerow(result) ## 항상 이번 실험 결과 행은 작성
 
 
 
@@ -251,6 +251,7 @@ plt.grid()
 plt.tight_layout()
 plt.savefig(loss_plot_path)
 plt.show()
+plt.close()
 
 ## Accuracy 그래프 그리기
 plt.figure()
@@ -267,3 +268,4 @@ plt.grid()
 plt.tight_layout()
 plt.savefig(accuracy_plot_path)
 plt.show()
+plt.close(
