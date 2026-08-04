@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 ## 결과를 저장할 폴더와 파일 경로
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent if "__file__" in globals() else Path.cwd() ## if 부분은 코랩에서 실행할때만 필요함
 DATA_DIR = PROJECT_ROOT / "data" / "MNIST"
 RESULT_DIR = PROJECT_ROOT / "results" / "mnist"
 PLOT_DIR = PROJECT_ROOT / "plots" / "mnist"
@@ -268,4 +268,4 @@ plt.grid()
 plt.tight_layout()
 plt.savefig(accuracy_plot_path)
 plt.show()
-plt.close(
+plt.close()
