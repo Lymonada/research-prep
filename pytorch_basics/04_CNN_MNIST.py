@@ -243,10 +243,10 @@ write_header = not log_path.exists()
 with log_path.open("a", newline="", encoding="utf-8") as file:
     writer = csv.DictWriter(file, fieldnames=fieldnames)
 
-    if write_header:
+    if write_header: ## 첫 실행일때만 헤더를 적도록
         writer.writeheader()
 
-    writer.writerow(result)
+    writer.writerow(result) ## 항상 이번 실험 결과 행은 작성
 
 
 
