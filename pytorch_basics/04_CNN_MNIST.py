@@ -11,7 +11,7 @@ DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 print(f"Device : {DEVICE}")
 
 ## 결과를 저장할 폴더와 파일 경로
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent if "__file__" in globals() else Path.cwd() ## if 부분은 코랩에서 실행할때만 필요함
 DATA_DIR = PROJECT_ROOT / "data" / "MNIST"
 RESULT_DIR = PROJECT_ROOT / "results" / "mnist"
 PLOT_DIR = PROJECT_ROOT / "plots" / "mnist"
@@ -95,7 +95,7 @@ validation_dataset_loader = DataLoader(dataset=validation_dataset, batch_size=BA
 test_dataset_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 LEARNING_RATE = 1e-3
-model = MyCNNModel().to_(DEVICE)
+model = MyCNNModel().to(DEVICE)
 loss_function = nn.CrossEntropyLoss() ## 여기에 Softmax 함수가 포함되어 있음
 optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
 
