@@ -72,8 +72,6 @@ CNN은 두 개의 convolution layer를 사용하여 이미지의 공간적 특�
 - Dropout: 0.5
 - Linear: 256 → 10
 
-:contentReference[oaicite:3]{index=3}
-
 ### Training Combinations
 
 | Experiment ID | Model | Optimizer | Learning Rate | Purpose |
