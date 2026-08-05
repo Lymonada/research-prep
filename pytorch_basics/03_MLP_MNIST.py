@@ -4,18 +4,22 @@ from torchvision import datasets
 from torchvision import transforms
 from torch.utils.data import DataLoader, random_split
 import csv
+import time
 from pathlib import Path
 import matplotlib.pyplot as plt
 
+DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+print(f"Device : {DEVICE}")
 
 ## 결과를 저장할 폴더와 파일 경로
 PROJECT_ROOT = Path(__file__).resolve().parent.parent if "__file__" in globals() else Path.cwd() ## if 부분은 코랩에서 실행할때만 필요함
 DATA_DIR = PROJECT_ROOT / "data" / "MNIST"
 RESULT_DIR = PROJECT_ROOT / "results" / "mnist"
 PLOT_DIR = PROJECT_ROOT / "plots" / "mnist"
+PLOT_RUNS_DIR = PLOT_DIR / "runs"  # 개별 실험 그래프 저장 폴더
 
 RESULT_DIR.mkdir(parents=True, exist_ok=True)
-PLOT_DIR.mkdir(parents=True, exist_ok=True)
+PLOT_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 ## 시드를 설정해서 이후에 똑같이 재현할 수 있게 함 
@@ -73,13 +77,22 @@ train_loader_generator = torch.Generator().manual_seed(SEED) ## train_dataset_lo
 train_dataset_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True, generator=train_loader_generator)
 
 validation_dataset_loader = DataLoader(dataset=validation_dataset, batch_size=BATCH_SIZE, shuffle=False)
-
 test_dataset_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-LEARNING_RATE = 1e-2
-model = MyDeepLearningModel()
-loss_function = nn.CrossEntropyLoss() ## 여기에 Softmax 함수가 포함되어 있음
-optimizer = torch.optim.SGD(model.parameters(), lr = LEARNING_RATE)
+
+## 하이퍼파라미터 설정
+MODEL_NAME = "MLP"
+OPTIMIZER_NAME = "SGD"  # 통제 실험 시 "Adam"으로 변경
+LEARNING_RATE = 1e-2    # 통제 실험 시 1e-3으로 변경
+experiment_id = f"{MODEL_NAME}_{OPTIMIZER_NAME}_lr{LEARNING_RATE}_seed{SEED}"
+
+model = MyDeepLearningModel().to(DEVICE)
+loss_function = nn.CrossEntropyLoss()
+
+if OPTIMIZER_NAME == "SGD":
+    optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
+elif OPTIMIZER_NAME == "Adam":
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 
 
@@ -92,8 +105,8 @@ def model_train(dataloader, model, loss_function, optimizer):
 
     for images, labels in dataloader:
 
-        x_train = images # [32, 1, 28, 28]
-        y_train = labels # [32]
+        x_train = images.to(DEVICE) # [32, 1, 28, 28]
+        y_train = labels.to(DEVICE) # [32]
 
         outputs = model(x_train) 
         ## outputs의 각 행에는 이미지 한장에 대한 10개의 숫자 클래스의 logits가 저장됨 
@@ -129,8 +142,8 @@ def model_evaluate(dataloader, model, loss_function):
 
         for images, labels in dataloader:
 
-            x_val = images
-            y_val = labels
+            x_val = images.to(DEVICE)
+            y_val = labels.to(DEVICE)
 
             outputs = model(x_val)
             loss = loss_function(outputs, y_val)
@@ -154,10 +167,11 @@ train_accuracy_list = []
 
 val_loss_list = []
 val_accuracy_list = []
+epoch_history = []  # epoch별 기록 저장용 리스트
 
-
-## 데이터로 학습
 EPOCHS = 20
+start_time = time.time()
+
 for epoch in range(EPOCHS): 
     
     train_avg_loss, train_avg_accuracy = model_train(train_dataset_loader, model, loss_function, optimizer)
@@ -167,6 +181,22 @@ for epoch in range(EPOCHS):
     val_avg_loss, val_avg_accuracy = model_evaluate(validation_dataset_loader, model, loss_function)
     val_loss_list.append(val_avg_loss)
     val_accuracy_list.append(val_avg_accuracy)
+
+    # epoch_history.csv에 기록할 데이터 수집
+    epoch_history.append({
+        "experiment_id": experiment_id,
+        "model": MODEL_NAME,
+        "optimizer": OPTIMIZER_NAME,
+        "learning_rate": LEARNING_RATE,
+        "seed": SEED,
+        "epoch": epoch + 1,
+        "train_loss": train_avg_loss,
+        "val_loss": val_avg_loss,
+        "train_accuracy": train_avg_accuracy,
+        "val_accuracy": val_avg_accuracy
+    })
+
+train_time_sec = round(time.time() - start_time, 2)
 
 
 
@@ -192,49 +222,66 @@ trainable_parameters = sum(
 
 
 ## 어떤걸 결과에 저장할지 결정
-result = {
-    "model": "MLP",
-    "dataset": "MNIST",
+## 1) CSV 1: epoch_history.csv 저장
+epoch_history_path = RESULT_DIR / "epoch_history.csv"
+write_epoch_header = not epoch_history_path.exists()
+
+epoch_fieldnames = [
+    "experiment_id", "model", "optimizer", "learning_rate", "seed",
+    "epoch", "train_loss", "val_loss", "train_accuracy", "val_accuracy"
+]
+
+with epoch_history_path.open("a", newline="", encoding="utf-8") as file:
+    writer = csv.DictWriter(file, fieldnames=epoch_fieldnames)
+    if write_epoch_header:
+        writer.writeheader()
+    writer.writerows(epoch_history)  # 20개 epoch 행 전체 작성
+
+
+## 2) 요약 지표 계산 및 CSV 2: run_summary.csv 저장
+best_epoch = val_accuracy_list.index(max(val_accuracy_list)) + 1
+best_val_accuracy = max(val_accuracy_list)
+best_val_loss = min(val_loss_list)
+
+summary_result = {
+    "experiment_id": experiment_id,
+    "model": MODEL_NAME,
+    "optimizer": OPTIMIZER_NAME,
+    "learning_rate": LEARNING_RATE,
     "seed": SEED,
     "epochs": EPOCHS,
     "batch_size": BATCH_SIZE,
-    "learning_rate": LEARNING_RATE,
     "parameters": trainable_parameters,
+    "best_epoch": best_epoch,
+    "best_val_accuracy": best_val_accuracy,
+    "best_val_loss": best_val_loss,
+    "final_val_accuracy": val_accuracy_list[-1],
     "test_loss": test_avg_loss,
-    "test_accuracy": test_avg_accuracy
+    "test_accuracy": test_avg_accuracy,
+    "train_time_sec": train_time_sec
 }
 
-fieldnames = [
-    "model",
-    "dataset",
-    "seed",
-    "epochs",
-    "batch_size",
-    "learning_rate",
-    "parameters",
-    "test_loss",
-    "test_accuracy"
+summary_fieldnames = [
+    "experiment_id", "model", "optimizer", "learning_rate", "seed",
+    "epochs", "batch_size", "parameters", "best_epoch", "best_val_accuracy",
+    "best_val_loss", "final_val_accuracy", "test_loss", "test_accuracy", "train_time_sec"
 ]
 
+summary_path = RESULT_DIR / "run_summary.csv"
+write_summary_header = not summary_path.exists()
 
-
-## CSV 파일에 결과 기록
-log_path = RESULT_DIR / "model_comparison.csv"
-write_header = not log_path.exists() ## 첫 실행에만 ..exists()가 False로 나오기 때문에 write_header는 True, 즉 헤더를 적는다
-
-with log_path.open("a", newline="", encoding="utf-8") as file:
-    writer = csv.DictWriter(file, fieldnames=fieldnames)
-
-    if write_header: ## 첫 실행일때만 헤더를 적도록
+with summary_path.open("a", newline="", encoding="utf-8") as file:
+    writer = csv.DictWriter(file, fieldnames=summary_fieldnames)
+    if write_summary_header:
         writer.writeheader()
-
-    writer.writerow(result) ## 항상 이번 실험 결과 행은 작성
+    writer.writerow(summary_result)
 
 
 
 epoch_list = range(1, EPOCHS + 1)
-loss_plot_path = PLOT_DIR / "MLP_loss.png"
-accuracy_plot_path = PLOT_DIR / "MLP_accuracy.png"
+loss_plot_path = PLOT_RUNS_DIR / f"{experiment_id}_loss.png"
+accuracy_plot_path = PLOT_RUNS_DIR / f"{experiment_id}_accuracy.png"
+
 
 ## Loss 그래프 그리기
 plt.figure()
@@ -244,7 +291,7 @@ plt.plot(epoch_list, val_loss_list, label="Validation Loss")
 
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
-plt.title("MLP MNIST Loss")
+plt.title(f"{experiment_id} Loss")
 plt.legend()
 plt.grid()
 
@@ -261,7 +308,7 @@ plt.plot(epoch_list, val_accuracy_list, label="Validation Accuracy")
 
 plt.xlabel("Epoch")
 plt.ylabel("Accuracy (%)")
-plt.title("MLP MNIST Accuracy")
+plt.title(f"{experiment_id} Accuracy")
 plt.legend()
 plt.grid()
 
