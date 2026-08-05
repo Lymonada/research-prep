@@ -107,4 +107,15 @@ CNN은 두 개의 convolution layer를 사용하여 이미지의 공간적 특�
 3. MLP vs CNN under SGD
 4. MLP vs CNN under Adam
 
+| 질문                              | 가장 적합한 그래프                          |
+| ------------------------------- | ----------------------------------- |
+| MLP가 Adam을 사용하면 최종 정확도가 높아지는가?  | Test Accuracy 막대그래프                 |
+| MLP가 Adam을 사용하면 더 빨리 학습되는가?     | Validation Accuracy 선그래프            |
+| CNN에서 SGD가 Adam보다 느리게 수렴하는가?    | Validation Accuracy 선그래프            |
+| 같은 optimizer에서도 CNN이 MLP보다 좋은가? | Validation Accuracy + Test Accuracy |
+| 후반에 과적합이 나타나는가?                 | Validation Loss 선그래프                |
+| 정확도는 같지만 예측의 확신 정도가 다른가?        | Validation Loss 선그래프                |
+| 높은 성능을 내기 위해 학습 시간이 얼마나 필요한가?   | 학습 시간 막대그래프                         |
+
+
 ## Limitations
