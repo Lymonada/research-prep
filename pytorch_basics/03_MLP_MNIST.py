@@ -6,7 +6,6 @@ from torch.utils.data import DataLoader, random_split
 import csv
 import time
 from pathlib import Path
-import matplotlib.pyplot as plt
 
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 print(f"Device : {DEVICE}")
@@ -15,11 +14,8 @@ print(f"Device : {DEVICE}")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent if "__file__" in globals() else Path.cwd() ## if 부분은 코랩에서 실행할때만 필요함
 DATA_DIR = PROJECT_ROOT / "data" / "MNIST"
 RESULT_DIR = PROJECT_ROOT / "results" / "mnist"
-PLOT_DIR = PROJECT_ROOT / "plots" / "mnist"
-PLOT_RUNS_DIR = PLOT_DIR / "runs"  # 개별 실험 그래프 저장 폴더
 
 RESULT_DIR.mkdir(parents=True, exist_ok=True)
-PLOT_RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 ## 시드를 설정해서 이후에 똑같이 재현할 수 있게 함 
@@ -82,8 +78,8 @@ test_dataset_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, sh
 
 ## 하이퍼파라미터 설정
 MODEL_NAME = "MLP"
-OPTIMIZER_NAME = "SGD"  # 통제 실험 시 "Adam"으로 변경
-LEARNING_RATE = 1e-2    # 통제 실험 시 1e-3으로 변경
+OPTIMIZER_NAME = "SGD"
+LEARNING_RATE = 1e-2
 experiment_id = f"{MODEL_NAME}_{OPTIMIZER_NAME}_lr{LEARNING_RATE}_seed{SEED}"
 
 model = MyDeepLearningModel().to(DEVICE)
@@ -275,44 +271,3 @@ with summary_path.open("a", newline="", encoding="utf-8") as file:
     if write_summary_header:
         writer.writeheader()
     writer.writerow(summary_result)
-
-
-
-epoch_list = range(1, EPOCHS + 1)
-loss_plot_path = PLOT_RUNS_DIR / f"{experiment_id}_loss.png"
-accuracy_plot_path = PLOT_RUNS_DIR / f"{experiment_id}_accuracy.png"
-
-
-## Loss 그래프 그리기
-plt.figure()
-
-plt.plot(epoch_list, train_loss_list, label="Train Loss")
-plt.plot(epoch_list, val_loss_list, label="Validation Loss")
-
-plt.xlabel("Epoch")
-plt.ylabel("Loss")
-plt.title(f"{experiment_id} Loss")
-plt.legend()
-plt.grid()
-
-plt.tight_layout()
-plt.savefig(loss_plot_path)
-plt.show()
-plt.close()
-
-## Accuracy 그래프 그리기
-plt.figure()
-
-plt.plot(epoch_list, train_accuracy_list, label="Train Accuracy")
-plt.plot(epoch_list, val_accuracy_list, label="Validation Accuracy")
-
-plt.xlabel("Epoch")
-plt.ylabel("Accuracy (%)")
-plt.title(f"{experiment_id} Accuracy")
-plt.legend()
-plt.grid()
-
-plt.tight_layout()
-plt.savefig(accuracy_plot_path)
-plt.show()
-plt.close()
