@@ -96,8 +96,8 @@ test_dataset_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, sh
 
 ## 하이퍼파라미터 설정
 MODEL_NAME = "CNN"
-OPTIMIZER_NAME = "Adam"
-LEARNING_RATE = 1e-3
+OPTIMIZER_NAME = "SGD"
+LEARNING_RATE = 1e-2
 experiment_id = f"{MODEL_NAME}_{OPTIMIZER_NAME}_lr{LEARNING_RATE}_seed{SEED}"
 
 model = MyCNNModel().to(DEVICE)

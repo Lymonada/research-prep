@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import math
 
 
 # ============================================================
@@ -271,9 +272,8 @@ plt.savefig(
 )
 plt.close()
 
-
 # ============================================================
-# 9. Test Accuracy 막대그래프
+# 9. Test Accuracy 막대그래프 (가로형)
 # ============================================================
 
 # 그래프의 막대 순서를 experiment_order와 동일하게 정렬
@@ -289,7 +289,7 @@ bar_labels = [
     for experiment_id in ordered_summary_df["experiment_id"]
 ]
 
-test_accuracies = ordered_summary_df["test_accuracy"]
+test_accuracies = ordered_summary_df["test_accuracy"].tolist()
 
 
 test_accuracy_comparison_path = (
@@ -297,33 +297,40 @@ test_accuracy_comparison_path = (
     / "test_accuracy_comparison.png"
 )
 
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(9, 5))
 
-bars = plt.bar(
+# 실험별 구분을 위한 색상 팔레트
+colors = ['#4C72B0', '#55A868', '#C44E52', '#8172B6']
+
+# 가로형 막대그래프 생성 (barh 사용)
+bars = plt.barh(
     bar_labels,
-    test_accuracies
+    test_accuracies,
+    color=colors,
+    height=0.5
 )
 
-plt.xlabel("Experiment")
-plt.ylabel("Test Accuracy (%)")
-plt.title("MNIST Test Accuracy Comparison")
+plt.xlabel("Test Accuracy (%)", fontsize=11)
+plt.title("MNIST Test Accuracy Comparison", fontsize=13, fontweight='bold', pad=15)
 
-# 막대그래프의 기준선을 0으로 설정
-plt.ylim(0, 100)
+# X축 범위를 조정하여 차이를 도드라지게 하고 오른쪽 여백 확보 (약 95% ~ 100.2%)
+min_acc = min(test_accuracies)
+plt.xlim(math.floor(min_acc) - 1, 100.2)
 
-plt.xticks(rotation=10)
-plt.grid(axis="y")
+# X축에만 점선 그리드 적용
+plt.grid(axis="x", linestyle="--", alpha=0.7)
 
-
-# 각 막대 위에 정확한 accuracy 표시
+# 각 막대 우측 끝에 정확한 accuracy 수치 표시
 for bar, accuracy in zip(bars, test_accuracies):
-
+    width = bar.get_width()
     plt.text(
-        bar.get_x() + bar.get_width() / 2,
-        bar.get_height() + 0.5,
+        width + 0.1,  # 막대 우측으로 살짝 띄움
+        bar.get_y() + bar.get_height() / 2,  # 막대 Y축 중앙
         f"{accuracy:.2f}%",
-        ha="center",
-        va="bottom"
+        ha="left",
+        va="center",
+        fontsize=10,
+        fontweight='bold'
     )
 
 
@@ -334,7 +341,6 @@ plt.savefig(
     bbox_inches="tight"
 )
 plt.close()
-
 
 # ============================================================
 # 10. 저장 결과 출력
