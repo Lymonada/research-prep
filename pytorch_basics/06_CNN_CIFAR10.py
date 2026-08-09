@@ -185,7 +185,7 @@ train_accuracy_list = []
 val_loss_list = []
 val_accuracy_list = []
 
-EPOCHS = 20
+EPOCHS = 100
 start_time = time.time()  # 학습 시작 시간 측정
 
 for epoch in range(EPOCHS): 
