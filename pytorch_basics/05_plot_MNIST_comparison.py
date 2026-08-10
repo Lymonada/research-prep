@@ -78,9 +78,11 @@ experiment_labels = {
 # 5. 필요한 실험만 선택
 # ============================================================
 
+## 각 행이 실험 ID로 이루어진 Series중에서, experiment_order에 있는 실험이 있는지 확인 후 boolean series로 리턴.
+## 그 boolean series중에서 true인 행만 남기기. 그 후 필터링된 결과를 .copy()로 별도의 DataFrame으로 만듦.
 epoch_history_df = epoch_history_df[
     epoch_history_df["experiment_id"].isin(experiment_order)
-].copy()
+].copy() 
 
 run_summary_df = run_summary_df[
     run_summary_df["experiment_id"].isin(experiment_order)
@@ -88,12 +90,12 @@ run_summary_df = run_summary_df[
 
 
 # 같은 실험을 실수로 여러 번 실행한 경우
-# 동일한 experiment_id와 epoch 중 가장 마지막 행 사용
+# experiment_id와 epoch가 같으면 중복이라고 판단하고 마지막 행만 유지. -> 가장 최근 진행한 실험만 저장
 epoch_history_df = epoch_history_df.drop_duplicates(
     subset=["experiment_id", "epoch"],
     keep="last"
 )
-
+## run_summary는 epoch를 기록하지 않기때문에 experiment_id만 같아도 중복으로 판단. -> 가장 최근 진행한 실험만 저장
 run_summary_df = run_summary_df.drop_duplicates(
     subset=["experiment_id"],
     keep="last"
@@ -107,6 +109,7 @@ run_summary_df = run_summary_df.drop_duplicates(
 history_experiments = set(epoch_history_df["experiment_id"])
 summary_experiments = set(run_summary_df["experiment_id"])
 
+## 빠진 실험 = 원래 있어야 하는 실험 - 실제로 CSV에 있는 실험
 missing_history = set(experiment_order) - history_experiments
 missing_summary = set(experiment_order) - summary_experiments
 
@@ -128,7 +131,8 @@ if missing_summary:
 expected_epochs = set(range(1, 21))
 
 for experiment_id in experiment_order:
-
+    ## 예를 들어 현재 experiment_id = "CNN_SGD_lr0.01_seed42"라면, 그 실험에 해당하는 행만 true, 그래서 true인 행에서 epoch열만 선택
+    ## 그 결과로 1,2,3..,20 까지를 set으로 바꾸고 빠진 epoch = 원래 있어야 할 epoch - 실제로 있는 epoch 로 누락된 epoch가 몇번째인지 찾음.
     experiment_epochs = set(
         epoch_history_df.loc[
             epoch_history_df["experiment_id"] == experiment_id,
@@ -150,11 +154,11 @@ for experiment_id in experiment_order:
 # ============================================================
 
 for experiment_id in experiment_order:
-
+    ## epoch가 순서에 맞지않게 섞여있을 수도 있으니, 현재 실험의 행만 선택해서 epoch를 정렬.
     experiment_df = epoch_history_df[
         epoch_history_df["experiment_id"] == experiment_id
     ].sort_values("epoch")
-
+    ## x축 값으로 사용할 epoch를 미리 가져옴.
     epochs = experiment_df["epoch"]
 
 
@@ -246,7 +250,7 @@ validation_accuracy_comparison_path = (
 plt.figure(figsize=(9, 6))
 
 for experiment_id in experiment_order:
-
+    ## epoch가 순서에 맞지않게 섞여있을 수도 있으니, 현재 실험의 행만 선택해서 epoch를 정렬.
     experiment_df = epoch_history_df[
         epoch_history_df["experiment_id"] == experiment_id
     ].sort_values("epoch")
