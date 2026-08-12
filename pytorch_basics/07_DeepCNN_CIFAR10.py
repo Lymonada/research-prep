@@ -67,43 +67,44 @@ class MyCNNModel(nn.Module):
         self.dropout50 = nn.Dropout(p=0.5)
 
     def forward(self, data):
+        # 처음 입력 data: [batch_size, 3, 32, 32] (CIFAR-10 컬러 이미지)
 
-        data = self.conv1(data)
-        data = torch.relu(data)
-        data = self.conv2(data)
-        data = torch.relu(data)
-        data = self.pooling(data)
-        data = self.dropout25(data)
+        data = self.conv1(data)       # [batch_size, 32, 32, 32] (padding=1이라 공간 크기 유지, 채널만 3->32)
+        data = torch.relu(data)       # [batch_size, 32, 32, 32] (활성화 함수는 텐서 형태 변경 안 함)
+        data = self.conv2(data)       # [batch_size, 32, 32, 32]
+        data = torch.relu(data)       # [batch_size, 32, 32, 32]
+        data = self.pooling(data)     # [batch_size, 32, 16, 16] (stride=2 풀링으로 32x32 -> 16x16 반토막)
+        data = self.dropout25(data)   # [batch_size, 32, 16, 16] (드롭아웃은 텐서 형태 변경 안 함)
 
-        data = self.conv3(data)
-        data = torch.relu(data)
-        data = self.conv4(data)
-        data = torch.relu(data)
-        data = self.pooling(data)
-        data = self.dropout25(data)
+        data = self.conv3(data)       # [batch_size, 64, 16, 16] (채널 32->64)
+        data = torch.relu(data)       
+        data = self.conv4(data)       
+        data = torch.relu(data)       
+        data = self.pooling(data)     # [batch_size, 64, 8, 8]   (풀링으로 16x16 -> 8x8 반토막)
+        data = self.dropout25(data)   
 
-        data = self.conv5(data)
-        data = torch.relu(data)
-        data = self.pooling(data)
-        data = self.dropout25(data)
+        data = self.conv5(data)       # [batch_size, 128, 8, 8]  (채널 64->128)
+        data = torch.relu(data)       
+        data = self.pooling(data)     # [batch_size, 128, 4, 4]  (풀링으로 8x8 -> 4x4 반토막)
+        data = self.dropout25(data)   
 
-        data = self.conv6(data)
-        data = torch.relu(data)
-        data = self.pooling(data)
-        data = self.dropout25(data)
+        data = self.conv6(data)       # [batch_size, 128, 4, 4]
+        data = torch.relu(data)       
+        data = self.pooling(data)     # [batch_size, 128, 2, 2]  (풀링으로 4x4 -> 2x2 반토막)
+        data = self.dropout25(data)   
 
-        data = self.conv7(data)
-        data = torch.relu(data)
-        data = self.pooling(data)
-        data = self.dropout25(data)
+        data = self.conv7(data)       # [batch_size, 256, 2, 2]  (채널 128->256)
+        data = torch.relu(data)       
+        data = self.pooling(data)     # [batch_size, 256, 1, 1]  (풀링으로 2x2 -> 1x1 반토막. 공간 정보 1x1로 최종 압축)
+        data = self.dropout25(data)   
 
-        data = data.view(-1, 1 * 1 * 256)
+        data = data.view(-1, 1 * 1 * 256) # [batch_size, 256]    (Linear 층에 넣기 위해 1차원 막대기로 쫙 폄)
 
-        data = self.fc1(data)
-        data = torch.relu(data)
-        data = self.dropout50(data)
+        data = self.fc1(data)         # [batch_size, 128]        (256개의 특징을 128개로 축소)
+        data = torch.relu(data)       
+        data = self.dropout50(data)   
 
-        logits = self.fc2(data)
+        logits = self.fc2(data)       # [batch_size, 10]         (최종적으로 10개의 클래스에 대한 예측 점수 출력)
 
         return logits
 
