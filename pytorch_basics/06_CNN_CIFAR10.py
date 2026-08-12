@@ -21,7 +21,7 @@ RESULT_DIR.mkdir(parents=True, exist_ok=True)
 ## 시드를 설정해서 이후에 똑같이 재현할 수 있게 함 
 SEED = 42 
 torch.manual_seed(SEED) 
-
+print(f"다운로드 경로 확인: {DATA_DIR}")
 train_dataset = datasets.CIFAR10(root=DATA_DIR, train=True,  # 학습 데이터
                                transform=transforms.ToTensor(), # 0~255까지의 값을 0~1 사이의 값으로 변환시켜줌
                                download=True)
