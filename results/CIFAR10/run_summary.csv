@@ -1,0 +1,3 @@
+experiment_id,dataset,model,optimizer,learning_rate,seed,epochs,batch_size,parameters,final_train_loss,final_train_accuracy,final_val_loss,final_val_accuracy,test_loss,test_accuracy,train_time_sec
+CIFAR10_CNN_Adam_lr0.001_seed42,CIFAR10,CNN,Adam,0.001,42,100,64,545098,0.5973734863954432,78.36,0.7673792406717936,74.54666666666667,0.7751315309524536,74.66,932.0
+CIFAR10_DeepCNN_Adam_lr0.001_seed42,CIFAR10,DeepCNN,Adam,0.001,42,100,64,616362,0.559879410536149,81.46352941176471,0.5774266585350036,80.97333333333333,0.5970110702514648,80.9,1235.22

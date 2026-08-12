@@ -120,7 +120,7 @@ test_dataset_loader = DataLoader(dataset=test_dataset, batch_size=BATCH_SIZE, sh
 
 
 ## 하이퍼파라미터 설정
-MODEL_NAME = "CNN"
+MODEL_NAME = "DeepCNN"
 OPTIMIZER_NAME = "Adam"
 LEARNING_RATE = 1e-3
 DATASET_NAME = "CIFAR10"
