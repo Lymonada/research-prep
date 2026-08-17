@@ -1,4 +1,5 @@
 # Downloadable datasets
+data/MNIST/
 data/CIFAR10/
 
 # Jupyter / Colab
