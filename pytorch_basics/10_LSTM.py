@@ -163,16 +163,13 @@ def model_train(dataloader, model, loss_function, optimizer):
     return train_avg_loss
 
 
-
 def model_evaluate(dataloader, model, loss_function):
 
     model.eval()
 
-    ## 모든 배치의 누적 loss와 전체 sequence 개수 초기화
     total_loss_sum = 0
     total_sequences = 0
 
-    ## 각 batch에서 나온 예측값과 실제값을 저장할 list
     prediction_list = []
     target_list = []
 
@@ -180,33 +177,25 @@ def model_evaluate(dataloader, model, loss_function):
 
         for sequences, targets in dataloader:
 
-            ## sequences shape: [batch_size, sequence_length, input_size]
-            ## targets shape: [batch_size, 1]
+            ## 각 5일 sequence에 대한 다음 날 Close 예측
+            ## shape: [batch_size, 1]
+            predictions = model(sequences)
 
-            ## 각 sequence에 대한 다음 날 Close 예측
-            ## outputs shape: [batch_size, 1]
-            outputs = model(sequences)
+            ## 예측값과 실제 Close 사이의 MSE loss
+            loss = loss_function(predictions, targets)
 
-            ## 예측 Close와 실제 Close 사이의 MSE loss
-            loss = loss_function(outputs, targets)
-
-            ## 현재 batch의 평균 loss를 batch loss 합으로 변환 후 누적
+            ## epoch 전체 평균 loss 계산을 위한 누적
             total_loss_sum += loss.item() * targets.size(0)
-
-            ## 현재 batch의 sequence 개수 누적
             total_sequences += targets.size(0)
 
-            ## batch별 prediction과 target 저장
-            prediction_list.append(outputs)
+            ## 그래프 및 최종 평가를 위해 batch별 결과 저장
+            prediction_list.append(predictions)
             target_list.append(targets)
 
-    ## 전체 test sequence에 대한 평균 MSE loss
     test_avg_loss = total_loss_sum / total_sequences
 
-    ## batch별 prediction들을 sequence 방향으로 다시 하나의 tensor로 결합
+    ## 여러 batch의 결과를 다시 전체 test 데이터 순서로 결합
     test_pred_tensor = torch.cat(prediction_list, dim=0)
-
-    ## 실제 target들도 동일하게 하나의 tensor로 결합
     test_target_tensor = torch.cat(target_list, dim=0)
 
     return test_avg_loss, test_pred_tensor, test_target_tensor
