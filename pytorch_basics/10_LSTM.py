@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from torchvision import models
 import FinanceDataReader as fdr
+import matplotlib.pyplot as plt
 
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 print(f"using PyTorch version:  {torch.__version__}, Device : {DEVICE}")
@@ -210,3 +211,19 @@ test_target_numpy = test_target_tensor.cpu().numpy()
 ## scaling된 값을 원래 실제 주가 단위로 복원
 pred_inverse = scaler_y.inverse_transform(test_pred_numpy)
 y_test_inverse = scaler_y.inverse_transform(test_target_numpy)
+
+
+## 실제 test Close와 모델이 예측한 Close를 같은 그래프에 표시
+## x축: test sequence의 순서
+## y축: inverse_transform으로 복원한 실제 주가
+plt.plot(y_test_inverse, label="Actual")
+plt.plot(pred_inverse, label="Prediction")
+
+plt.xlabel("Test Sequence")
+plt.ylabel("Close Price")
+plt.title("Samsung Electronics Stock Price Prediction")
+
+plt.grid()
+plt.legend()
+
+plt.show()
