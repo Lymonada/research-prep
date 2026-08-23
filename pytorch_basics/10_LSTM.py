@@ -108,3 +108,56 @@ class MyLSTMModel(nn.Module):
 model = MyLSTMModel(FEATURE_NUMS, HIDDEN_SIZE, NUM_LAYERS).to(DEVICE)
 loss_function = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+def model_train(dataloader, model, loss_function, optimizer):
+
+    model.train()
+
+    ## 모든 배치의 loss 합과 지금까지 확인한 전체 sequence 개수 초기화
+    total_loss_sum = 0
+    total_sequences = 0
+
+    for sequences, targets in dataloader:
+
+        ## sequences에는 5일치 Open, High, Low, Volume 데이터가 들어있음
+        ## shape: [batch_size, sequence_length, input_size]
+        ## 현재 설정에서는 보통 [20, 5, 4]
+        x_train = sequences.to(DEVICE)
+
+        ## targets에는 각 5일 sequence 다음 날의 Close 정답이 들어있음
+        ## shape: [batch_size, 1]
+        ## 현재 설정에서는 보통 [20, 1]
+        y_train = targets.to(DEVICE)
+
+        ## 5일짜리 sequence를 LSTM에 입력하여 다음 날 Close 예측
+        ## outputs shape: [batch_size, 1]
+        ## 현재 설정에서는 보통 [20, 1]
+        outputs = model(x_train)
+
+        ## 모델이 예측한 Close와 실제 Close 사이의 MSE loss 계산
+        ## nn.MSELoss()의 기본 reduction='mean'이므로
+        ## loss는 현재 배치에 속한 sequence들의 평균 loss
+        loss = loss_function(outputs, y_train)
+
+        ## 이전 batch에서 계산된 gradient 초기화
+        optimizer.zero_grad()
+
+        ## loss를 기준으로 LSTM과 Linear layer의 parameter gradient 계산
+        loss.backward()
+
+        ## 계산된 gradient를 이용하여 parameter 업데이트
+        optimizer.step()
+
+        ## loss.item()은 현재 batch의 평균 loss
+        ## 여기에 현재 batch의 sequence 개수를 곱해서
+        ## 현재 batch의 loss 합으로 바꾼 뒤 epoch 전체에 누적
+        total_loss_sum += loss.item() * y_train.size(0)
+
+        ## 현재 batch에 들어있는 sequence 개수 누적
+        ## 보통 20개지만 마지막 batch는 더 작을 수 있음
+        total_sequences += y_train.size(0)
+
+    ## epoch 전체 sequence에 대한 평균 loss
+    train_avg_loss = total_loss_sum / total_sequences
+
+    return train_avg_loss
