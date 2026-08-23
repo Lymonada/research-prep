@@ -199,3 +199,14 @@ def model_evaluate(dataloader, model, loss_function):
     test_target_tensor = torch.cat(target_list, dim=0)
 
     return test_avg_loss, test_pred_tensor, test_target_tensor
+
+
+## scaling된 test 예측값 tensor를 NumPy 배열로 변환. scaler로 다시 복원하려고 inverse_transform을 해야하는데 NumPy를 인자로 받기 때문.
+test_pred_numpy = test_pred_tensor.cpu().numpy()
+
+## scaling된 실제 test 정답 tensor를 NumPy 배열로 변환
+test_target_numpy = test_target_tensor.cpu().numpy()
+
+## scaling된 값을 원래 실제 주가 단위로 복원
+pred_inverse = scaler_y.inverse_transform(test_pred_numpy)
+y_test_inverse = scaler_y.inverse_transform(test_target_numpy)
