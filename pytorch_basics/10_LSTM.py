@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
+from datetime import datetime
 
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -16,6 +17,8 @@ HIDDEN_SIZE = 4         # 한 hidden_state의 크기. 차원 개수.
 NUM_LAYERS = 1          # RNN 계열 계층이 몇겹으로 쌓여있는지.
 LEARNING_RATE = 1e-3    # 학습율
 BATCH_SIZE = 20         # 학습을 위한 배치 하나당 몇개의 원소가 있는지.
+
+EPOCHS = 200
 
 df = fdr.DataReader('005930', '2020-01-01', '2024-06-30')
 df = df[['Open', 'High', 'Low', 'Volume', 'Close']]
@@ -198,6 +201,43 @@ def model_evaluate(dataloader, model, loss_function):
 
     return test_avg_loss, test_pred_tensor, test_target_tensor
 
+
+## 모델 학습
+train_loss_list = []
+
+start_time = datetime.now()
+
+for epoch in range(EPOCHS):
+
+    train_avg_loss = model_train(
+        train_loader,
+        model,
+        loss_function,
+        optimizer
+    )
+
+    train_loss_list.append(train_avg_loss)
+
+    ## 10 epoch마다 현재 평균 loss 확인
+    if (epoch + 1) % 10 == 0:
+        print(
+            f"Epoch [{epoch + 1}/{EPOCHS}], "
+            f"Train Loss: {train_avg_loss:.6f}"
+        )
+
+end_time = datetime.now()
+
+print(f"Elapsed Time: {end_time - start_time}")
+
+
+## 학습된 모델을 test data로 평가
+test_avg_loss, test_pred_tensor, test_target_tensor = model_evaluate(
+    test_loader,
+    model,
+    loss_function
+)
+
+print(f"Test Loss: {test_avg_loss:.6f}")
 
 ## scaling된 test 예측값 tensor를 NumPy 배열로 변환. scaler로 다시 복원하려고 inverse_transform을 해야하는데 NumPy를 인자로 받기 때문.
 test_pred_numpy = test_pred_tensor.cpu().numpy()
