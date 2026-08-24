@@ -1,12 +1,9 @@
 import torch
 from torch import nn
-from torchvision import datasets
-from torchvision import transforms
-from torch.utils.data import DataLoader, random_split
-import csv
-import time
-from pathlib import Path
-from torchvision import models
+from torch.utils.data import DataLoader, TensorDataset
+
+import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 import FinanceDataReader as fdr
 import matplotlib.pyplot as plt
 
