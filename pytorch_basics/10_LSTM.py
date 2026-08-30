@@ -99,9 +99,11 @@ class MyLSTMModel(nn.Module):
         h0 = torch.zeros(self.num_layers, data.size(0), self.hidden_size).to(DEVICE)
         c0 = torch.zeros(self.num_layers, data.size(0), self.hidden_size).to(DEVICE)
 
-        outputs, _ = self.lstm(data, (h0, c0))
-        last_hs = outputs[:, -1, :]
-        prediction = self.fc(last_hs)
+        outputs, (h_n, c_n) = self.lstm(data, (h0, c0)) # lstm의 리턴값은 마지막 레이어의 모든 timestep의 hidden state를 모아놓은 outputs -> shape은 [B, T, H × D]
+                                               # 그리고 모든 layer/direction에서 마지막에 남은 hidden state들을 가지는 h_n -> shape은 [L × D, B, H]
+                                               # 그리고 모든 layer/direction에서 마지막에 남은 cell state들을 가지는 c_n -> shape은 [L × D, B, H]
+        last_hs = outputs[:, -1, :] # 5일 sequence → 다음 날 Close 하나를 예측하기 때문에 sequence 하나당 출력 하나가 필요, 즉 sequence를 다 읽고 난 뒤 맨 마지막 hidden state를 가져옴
+        prediction = self.fc(last_hs) # 가져온 마지막 hidden state를 Linear층 통과 시켜서 예측값
 
         return prediction
 
@@ -135,18 +137,13 @@ def model_train(dataloader, model, loss_function, optimizer):
         ## 현재 설정에서는 보통 [20, 1]
         outputs = model(x_train)
 
-        ## 모델이 예측한 Close와 실제 Close 사이의 MSE loss 계산
+        ## 모델이 예측한 scaled Close와 실제 scaled Close 사이의 MSE loss 계산
         ## nn.MSELoss()의 기본 reduction='mean'이므로
         ## loss는 현재 배치에 속한 sequence들의 평균 loss
         loss = loss_function(outputs, y_train)
 
-        ## 이전 batch에서 계산된 gradient 초기화
         optimizer.zero_grad()
-
-        ## loss를 기준으로 LSTM과 Linear layer의 parameter gradient 계산
         loss.backward()
-
-        ## 계산된 gradient를 이용하여 parameter 업데이트
         optimizer.step()
 
         ## loss.item()은 현재 batch의 평균 loss
@@ -258,7 +255,7 @@ plt.plot(pred_inverse, label="Prediction")
 
 plt.xlabel("Test Sequence")
 plt.ylabel("Close Price")
-plt.title("Samsung Electronics Stock Price Prediction")
+plt.title("Samsung Electronics Stock Price Prediction (LSTM)")
 
 plt.grid()
 plt.legend()
