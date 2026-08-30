@@ -8,6 +8,12 @@ from sklearn.preprocessing import MinMaxScaler
 import FinanceDataReader as fdr
 import matplotlib.pyplot as plt
 
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PLOT_DIR = PROJECT_ROOT / "plots" / "stock"
+PLOT_DIR.mkdir(parents=True, exist_ok=True)
+
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 print(f"using PyTorch version:  {torch.__version__}, Device : {DEVICE}")
 
@@ -114,6 +120,9 @@ class MyLSTMModel(nn.Module):
 model = MyLSTMModel(FEATURE_NUMS, HIDDEN_SIZE, NUM_LAYERS).to(DEVICE)
 loss_function = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print(f"Trainable Parameters: {trainable_params:,}")
 
 def model_train(dataloader, model, loss_function, optimizer):
 
@@ -229,7 +238,8 @@ for epoch in range(EPOCHS):
 
 end_time = datetime.now()
 
-print(f"Elapsed Time: {end_time - start_time}")
+elapsed_time = (end_time - start_time).total_seconds()
+print(f"Training Time: {elapsed_time:.3f} sec")
 
 
 ## 학습된 모델을 test data로 평가
@@ -264,5 +274,11 @@ plt.title("Samsung Electronics Stock Price Prediction (LSTM)")
 
 plt.grid()
 plt.legend()
+
+plt.savefig(
+    PLOT_DIR / "LSTM_prediction.png",
+    dpi=150,
+    bbox_inches="tight"
+)
 
 plt.show()
