@@ -175,6 +175,8 @@ def model_evaluate(dataloader, model, loss_function):
 
         for sequences, targets in dataloader:
 
+            sequences = sequences.to(DEVICE)
+            targets = targets.to(DEVICE)
             ## 각 5일 sequence에 대한 다음 날 Close 예측
             ## shape: [batch_size, 1]
             predictions = model(sequences)
