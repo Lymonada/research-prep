@@ -93,6 +93,8 @@ class MyLSTMModel(nn.Module):
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        # hidden state의 H개 차원을 조합해 scalar 하나를 출력하며,
+        # 이 값을 다음 날 Close와 비교해 학습하므로 최종 출력이 Close 예측값이 됨.
         self.fc = nn.Linear(hidden_size, 1)
 
     def forward(self, data):
@@ -104,7 +106,8 @@ class MyLSTMModel(nn.Module):
                                                # 그리고 모든 layer/direction에서 마지막에 남은 cell state들을 가지는 c_n -> shape은 [L × D, B, H]
         last_hs = outputs[:, -1, :] # 5일 sequence → 다음 날 Close 하나를 예측하기 때문에 sequence 하나당 출력 하나가 필요, 즉 sequence를 다 읽고 난 뒤 맨 마지막 hidden state를 가져옴
         prediction = self.fc(last_hs) # 가져온 마지막 hidden state를 Linear층 통과 시켜서 예측값
-
+        # 마지막 hidden state의 H개 값은 특정 feature가 아니라 학습된 representation이며,
+        # Linear층이 이를 조합해 다음 날 Close 하나를 예측: [B, H] → [B, 1]
         return prediction
 
 
