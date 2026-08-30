@@ -53,12 +53,14 @@ test_df.iloc[:, :-1] = scaler_x.transform(test_df.iloc[:, :-1])
 ## test에도 fit_transform을 해버리면 미래 주식정보의 min/max를 알게되서 그 min/max에 맞게 scaling 되어버림
 
 scaler_y = MinMaxScaler()  # label scaling
-train_df.iloc[ : , [-1] ] = scaler_y.fit_transform(train_df.iloc[ : , [-1] ])
-test_df.iloc[ : , [-1] ] = scaler_y.transform(test_df.iloc[ : , [-1] ])
 ## x와 y에 서로 다른 두 scaler를 쓴 이유는 scaler 객체가 자기 안에 학습한 min/max 정보를 저장하기 때문에,
 ## x에 쓴 scaler를 y에 다시 쓰면 y의 min/max를 기억하는 scaler가 되어버림.
 ## 그래서 나중에 다른 x데이터가 들어오면 그걸 예전 기준에 맞춰서 scaling해야했을때, x를 scaling했던 scaler는 y의 min/max만 기억하고 있기때문에 처리 할수 없음.
 
+train_df.iloc[ : , [-1] ] = scaler_y.fit_transform(train_df.iloc[ : , [-1] ])
+test_df.iloc[ : , [-1] ] = scaler_y.transform(test_df.iloc[ : , [-1] ])
+# Close는 한 열이지만 scaler 입력 shape을 [N, 1]로 유지하기 위해 [-1]로 선택
+# -1 → 1D Series [N], [-1] → 2D DataFrame [N, 1]
 
 
 ## 데이터 정리해서 준비하기
