@@ -35,15 +35,15 @@ BATCH_SIZE = 20         # 학습을 위한 배치 하나당 몇개의 원소가 
 EPOCHS = 200
 
 df = fdr.DataReader('005930', '2020-01-01', '2024-06-30')
-df = df[['Open', 'High', 'Low', 'Volume', 'Close']]
+df = df[['Open', 'High', 'Low', 'Volume', 'Close']].astype(float)
 df.head(10)
 
 # train : test - 70 : 30 분리
 
 SPLIT = int(0.7*len(df))  # train : test = 7 : 3
 
-train_df = df[ :SPLIT ]
-test_df = df[ SPLIT: ]
+train_df = df[:SPLIT].copy()
+test_df = df[SPLIT:].copy()
 
 
 scaler_x = MinMaxScaler()  # feature scaling
@@ -53,8 +53,8 @@ test_df.iloc[:, :-1] = scaler_x.transform(test_df.iloc[:, :-1])
 ## test에도 fit_transform을 해버리면 미래 주식정보의 min/max를 알게되서 그 min/max에 맞게 scaling 되어버림
 
 scaler_y = MinMaxScaler()  # label scaling
-train_df.iloc[ : , -1 ] = scaler_y.fit_transform(train_df.iloc[ : , [-1] ])
-test_df.iloc[ : , -1 ] = scaler_y.transform(test_df.iloc[ : , [-1] ])
+train_df.iloc[ : , [-1] ] = scaler_y.fit_transform(train_df.iloc[ : , [-1] ])
+test_df.iloc[ : , [-1] ] = scaler_y.transform(test_df.iloc[ : , [-1] ])
 ## x와 y에 서로 다른 두 scaler를 쓴 이유는 scaler 객체가 자기 안에 학습한 min/max 정보를 저장하기 때문에,
 ## x에 쓴 scaler를 y에 다시 쓰면 y의 min/max를 기억하는 scaler가 되어버림.
 ## 그래서 나중에 다른 x데이터가 들어오면 그걸 예전 기준에 맞춰서 scaling해야했을때, x를 scaling했던 scaler는 y의 min/max만 기억하고 있기때문에 처리 할수 없음.
