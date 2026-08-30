@@ -17,6 +17,14 @@ PLOT_DIR.mkdir(parents=True, exist_ok=True)
 DEVICE = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 print(f"using PyTorch version:  {torch.__version__}, Device : {DEVICE}")
 
+SEED = 42
+
+torch.manual_seed(SEED)
+np.random.seed(SEED)
+
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
+
 FEATURE_NUMS = 4        # 입력층으로 들어가는 데이터 개수 feature
 SEQ_LENGTH = 5          # 정답을 만들기 위해 필요한 시점 개수 time step
 HIDDEN_SIZE = 4         # 한 hidden_state의 크기. 차원 개수.
@@ -216,6 +224,8 @@ def model_evaluate(dataloader, model, loss_function):
 ## 모델 학습
 train_loss_list = []
 
+if DEVICE.type == "cuda":
+    torch.cuda.synchronize()
 start_time = datetime.now()
 
 for epoch in range(EPOCHS):
@@ -236,6 +246,8 @@ for epoch in range(EPOCHS):
             f"Train Loss: {train_avg_loss:.6f}"
         )
 
+if DEVICE.type == "cuda":
+    torch.cuda.synchronize()
 end_time = datetime.now()
 
 elapsed_time = (end_time - start_time).total_seconds()
