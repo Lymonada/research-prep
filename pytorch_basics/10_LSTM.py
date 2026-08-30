@@ -133,14 +133,14 @@ def model_train(dataloader, model, loss_function, optimizer):
         y_train = targets.to(DEVICE)
 
         ## 5일짜리 sequence를 LSTM에 입력하여 다음 날 Close 예측
-        ## outputs shape: [batch_size, 1]
+        ## predictions shape: [batch_size, 1]
         ## 현재 설정에서는 보통 [20, 1]
-        outputs = model(x_train)
+        predictions = model(x_train)
 
         ## 모델이 예측한 scaled Close와 실제 scaled Close 사이의 MSE loss 계산
         ## nn.MSELoss()의 기본 reduction='mean'이므로
         ## loss는 현재 배치에 속한 sequence들의 평균 loss
-        loss = loss_function(outputs, y_train)
+        loss = loss_function(predictions, y_train)
 
         optimizer.zero_grad()
         loss.backward()
