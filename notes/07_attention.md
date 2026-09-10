@@ -117,8 +117,7 @@ Attention의 핵심은 **관련성을 나타내는 scalar score를 만드는 것
 score들을 softmax에 넣어 합이 1인 attention weight로 바꾼다.
 
 $$
-\alpha_i
-=
+\alpha_i =
 \frac{\exp(e_i)}
 {\sum_j \exp(e_j)}
 $$
@@ -142,8 +141,7 @@ attention weights
 각 Value에 attention weight를 곱하고 합한다.
 
 $$
-c
-=
+c =
 \sum_i \alpha_i v_i
 $$
 
@@ -180,8 +178,7 @@ context vector
 Attention weight \(\alpha\) 자체는 모델이 직접 저장하고 학습하는 parameter가 아니다.
 
 $$
-\alpha
-=
+\alpha =
 softmax(score(Q,K))
 $$
 
@@ -344,8 +341,7 @@ $$
 가 되고,
 
 $$
-z_i
-=
+z_i =
 \sum_{j=1}^{T}
 \alpha_{ij}v_j
 $$
@@ -364,8 +360,7 @@ $$
 Transformer에서는 대표적으로 Scaled Dot-Product Attention을 사용한다.
 
 $$
-Attention(Q,K,V)
-=
+Attention(Q,K,V) =
 softmax
 \left(
 \frac{QK^T}{\sqrt{d_k}}
@@ -520,10 +515,8 @@ $$
 이라면
 
 $$
-d_{head}
-=
-\frac{d_{model}}{h}
-=
+d_{head} =
+\frac{d_{model}}{h} =
 64
 $$
 
@@ -579,8 +572,7 @@ $$
 각 head에서는 동일한 Scaled Dot-Product Attention을 계산한다.
 
 $$
-head_i
-=
+head_i =
 softmax
 \left(
 \frac{Q_iK_i^T}{\sqrt{d_{head}}}
@@ -645,8 +637,7 @@ $$
 이는 개념적으로
 
 $$
-W_Q
-=
+W_Q =
 [
 W_Q^{(1)}
 |
@@ -933,8 +924,7 @@ $$
 Multi-Head Attention의 완성된 식은 다음과 같다.
 
 $$
-MultiHead(Q,K,V)
-=
+MultiHead(Q,K,V) =
 Concat(head_1,\dots,head_h)W_O
 $$
 
@@ -982,8 +972,7 @@ V_i=XW_V^{(i)}
 $$
 
 $$
-head_i
-=
+head_i =
 softmax
 \left(
 \frac{Q_iK_i^T}{\sqrt{d_{head}}}
@@ -993,8 +982,7 @@ $$
 전체 Multi-Head Attention:
 
 $$
-MHA(X)
-=
+MHA(X) =
 Concat(head_1,\dots,head_h)W_O
 $$
 
