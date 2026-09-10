@@ -219,8 +219,7 @@ $$
 그 다음 output projection과 softmax를 통해 현재 timestep의 출력 token 확률을 계산한다.
 
 $$
-P(y_t)
-=
+P(y_t) =
 softmax(W_o\tilde{s}_t + b_o)
 $$
 
@@ -371,16 +370,14 @@ Decoder는
 먼저 Query와 각 Key를 비교해 attention weight를 만들고,
 
 $$
-\alpha_{t,i}
-=
+\alpha_{t,i} =
 softmax(score(s_t,h_i))
 $$
 
 그 weight로 Value, 즉 Encoder hidden states를 가중합한다.
 
 $$
-c_t
-=
+c_t =
 \sum_i \alpha_{t,i}h_i
 $$
 
