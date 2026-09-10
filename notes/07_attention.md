@@ -637,11 +637,43 @@ $$
 
 를 얻는다.
 
-마지막 두 개의 $T$가 의미하는 것은,
+여기서 **Attention Score와 Attention Weight의 shape인 $[B,T,T]$에서 마지막 두 차원의 $T$**는 각각
 
-> 각 Query token $T$개가 모든 Key token $T$개와 관계를 계산한다
+$$
+[B,\underbrace{T}_{Query},\underbrace{T}_{Key}]
+$$
 
-는 것이다.
+처럼 **Query token의 개수**와 **Key token의 개수**를 의미한다.
+
+즉,
+
+> 각 Query token $T$개가 모든 Key token $T$개와 관계를 계산한다.
+
+예를 들어 $T=4$라면 한 batch의 Attention Weight는 다음과 같은 $4\times4$ matrix로 볼 수 있다.
+
+| | Key 1 | Key 2 | Key 3 | Key 4 |
+| --- | ---: | ---: | ---: | ---: |
+| **Query 1** | $\alpha_{11}$ | $\alpha_{12}$ | $\alpha_{13}$ | $\alpha_{14}$ |
+| **Query 2** | $\alpha_{21}$ | $\alpha_{22}$ | $\alpha_{23}$ | $\alpha_{24}$ |
+| **Query 3** | $\alpha_{31}$ | $\alpha_{32}$ | $\alpha_{33}$ | $\alpha_{34}$ |
+| **Query 4** | $\alpha_{41}$ | $\alpha_{42}$ | $\alpha_{43}$ | $\alpha_{44}$ |
+
+따라서 **행(row)은 Query token**, **열(column)은 Key token**에 해당한다.  
+각 행에는 하나의 Query가 모든 Key를 얼마나 참고하는지가 들어 있고, softmax 이후에는 각 행의 attention weight 합이 1이 된다.
+
+그 다음 이 $[B,T,T]$ attention weight와 $V:[B,T,d_v]$를 곱하면,  
+각 Query마다 모든 Value를 weighted sum한 하나의 $d_v$차원 output이 만들어진다.
+
+그래서 최종 결과가
+
+$$
+Z:[B,T,d_v]
+$$
+
+가 된다. 즉 **Query token $T$개 각각에 대해 하나의 $d_v$차원 output vector가 나온다.**
+
+Self-Attention에서는 Query와 Key가 같은 입력 sequence에서 만들어지므로 둘의 token 수가 모두 $T$이다.  
+더 일반적으로 Query와 Key의 길이가 다를 수 있는 attention에서는 score/weight shape을 $[B,T_q,T_k]$처럼 쓸 수 있다.
 
 ---
 
@@ -782,10 +814,7 @@ Head 3
 따라서 같은 token에 대해서도 각 head는 서로 다른 output
 
 $$
-z_i^{(1)},\;
-z_i^{(2)},\;
-\dots,\;
-z_i^{(h)}
+z_i^{(1)},\;z_i^{(2)},\;\dots,\;z_i^{(h)}
 $$
 
 를 만든다.
