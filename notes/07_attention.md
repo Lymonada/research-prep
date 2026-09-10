@@ -86,6 +86,17 @@ h1   h2   h3   ...   hT
 
 Decoder는 현재 자신이 필요한 정보와 각각의 Encoder hidden state가 얼마나 관련 있는지 계산한다.
 
+이때 가장 기본적인 Encoder-Decoder Attention에서는
+
+- **Query**: 현재 Decoder state $s_t$
+- **Key**: 각 Encoder hidden state $h_i$
+- **Value**: 각 Encoder hidden state $h_i$
+
+로 볼 수 있다.
+
+즉 Key와 Value가 완전히 다른 원본 정보에서 오는 것이 아니라,  
+이 기본 형태에서는 **같은 Encoder hidden state $h_i$가 비교 대상(Key)이면서 동시에 실제 가중합할 정보(Value)** 역할을 한다.
+
 중요한 점은 **Decoder timestep마다 attention이 다시 계산된다는 것**이다.
 
 따라서 첫 번째 출력 token을 만들 때 중요했던 Encoder 위치와,  
@@ -105,6 +116,14 @@ $$
 e_i = score(query, key_i)
 $$
 
+Encoder-Decoder Attention의 기본 형태로 쓰면,
+
+$$
+e_{t,i} = score(s_t, h_i)
+$$
+
+이다.
+
 여기서 `score`는 반드시 dot product일 필요는 없다.
 
 Attention의 핵심은 **관련성을 나타내는 scalar score를 만드는 것**이고,  
@@ -122,7 +141,15 @@ $$
 {\sum_j \exp(e_j)}
 $$
 
-이때 $\alpha_i$가 각 정보가 얼마나 중요하게 사용될지를 나타낸다.
+Encoder-Decoder Attention에서는 Decoder timestep $t$마다
+
+$$
+\alpha_{t,i}
+$$
+
+가 새로 계산된다.
+
+이때 $\alpha_{t,i}$는 현재 Decoder가 Encoder의 $i$번째 hidden state를 얼마나 중요하게 참고할지를 나타낸다.
 
 ```text
 scores
@@ -141,35 +168,95 @@ attention weights
 각 Value에 attention weight를 곱하고 합한다.
 
 $$
-c =
-\sum_i \alpha_i v_i
+c_t =
+\sum_i \alpha_{t,i} v_i
 $$
 
-이렇게 얻은 $c$가 **context vector / attention output**이다.
+가장 기본적인 Encoder-Decoder Attention에서는 Value가 Encoder hidden state 자체이므로,
 
-즉 Attention은 후보 정보를 하나 선택하는 것이 아니라,  
-중요도에 따라 여러 Value를 가중합하여 새로운 representation을 만든다.
+$$
+v_i = h_i
+$$
+
+이고 따라서
+
+$$
+c_t =
+\sum_i \alpha_{t,i} h_i
+$$
+
+가 된다.
+
+이렇게 얻은 $c_t$가 **현재 Decoder timestep $t$를 위한 context vector**이다.
+
+즉 $c_t$는 Encoder hidden state 중 하나를 그대로 선택한 값이 아니다.  
+현재 Decoder state $s_t$와의 관련성에 따라 Encoder hidden states 전체를 가중합하여 만든,
+
+> **"지금 이 출력 token을 만들 때 입력 sequence에서 필요한 정보를 요약한 vector"**
+
+라고 이해하면 된다.
 
 ---
 
 ### Step 4. Use the Context
 
-Encoder-Decoder Attention에서는 이 context vector를 Decoder의 현재 state와 함께 사용해  
-다음 출력 token을 예측하는 데 활용할 수 있다.
+Context vector를 만들었다면 끝이 아니다.  
+Encoder-Decoder Attention에서는 이 $c_t$를 **현재 Decoder state $s_t$와 함께 사용하여 실제 출력 token을 예측**한다.
 
-핵심 흐름은 다음과 같다.
+한 가지 대표적인 형태는 둘을 concatenate하는 것이다.
+
+$$
+[s_t;c_t]
+$$
+
+그리고 이 결합된 정보를 linear transformation과 activation 등에 통과시켜 attentional state를 만들 수 있다.
+
+$$
+\tilde{s}_t =
+\tanh(W_c[s_t;c_t] + b_c)
+$$
+
+그 다음 output projection과 softmax를 통해 현재 timestep의 출력 token 확률을 계산한다.
+
+$$
+P(y_t)
+=
+softmax(W_o\tilde{s}_t + b_o)
+$$
+
+따라서 직관적으로는,
+
+- $s_t$: **Decoder가 지금까지 생성하며 가지고 있는 상태**
+- $c_t$: **입력 sequence에서 지금 참고해야 할 정보**
+
+를 합쳐서 다음 출력 token을 결정한다고 보면 된다.
 
 ```text
-score
-  ↓
-softmax
-  ↓
-attention weights
-  ↓
-weighted sum of Values
-  ↓
-context vector
+Decoder state s_t
+       │
+       │ Query
+       ↓
+Encoder hidden states h1 ... hT
+       │
+       ↓ attention
+attention weights α_t
+       │
+       ↓ weighted sum
+context vector c_t
+       │
+       ├──── Decoder state s_t
+       ↓
+    [s_t ; c_t]
+       ↓
+projection / activation
+       ↓
+     softmax
+       ↓
+ output token y_t
 ```
+
+Attention 방식에 따라 context를 Decoder 내부에 넣는 정확한 위치나 계산식은 달라질 수 있지만,  
+핵심은 **Decoder의 현재 상태와 입력에서 가져온 context를 함께 사용해 출력을 만든다**는 것이다.
 
 ---
 
@@ -213,23 +300,41 @@ Attention을 일반적인 형태로 표현하기 위해 Q/K/V 개념을 사용�
 
 ### Key
 
-> 내가 가진 정보가 어떤 정보인지 비교하기 위한 representation
+> Query와 비교되어 "이 정보가 얼마나 관련 있는가"를 판단하는 representation
 
-Query와 비교되어 attention score를 만드는 역할을 한다.
+Query와 Key를 비교하여 attention score를 만든다.
 
 ---
 
 ### Value
 
-> 실제로 가져올 정보
+> Attention weight가 실제로 적용되는 **내용(content) representation**
 
-Attention weight가 계산된 뒤 weighted sum에 사용되는 representation이다.
+Query와 Key를 비교해서 attention weight를 만든 뒤,  
+그 weight를 각 Value에 곱하고 합하여 attention output / context vector를 만든다.
+
+즉 Value는 단순히 "가져올 정보"라는 추상적인 표현보다,
+
+> **attention weight로 가중합되는 실제 정보**
+
+라고 이해하는 것이 정확하다.
+
+초기 Encoder-Decoder Attention의 기본 형태에서는 별도의 Value projection을 두지 않고  
+**Encoder hidden state $h_i$ 자체가 Key이면서 동시에 Value** 역할을 할 수 있다.
+
+반면 Transformer Self-Attention에서는 같은 입력에서 출발하더라도
+
+$$
+K=XW_K,\qquad V=XW_V
+$$
+
+처럼 서로 다른 projection을 사용해 Key와 Value representation을 분리한다.
 
 ---
 
 이를 한 문장으로 정리하면,
 
-> **Query와 Key를 비교해서 어디를 볼지 정하고, 그 결과로 Value를 가져온다.**
+> **Query와 Key를 비교해서 어디에 얼마나 집중할지 정하고, 그 attention weight로 Value들을 가중합해 새로운 정보를 만든다.**
 
 ---
 
@@ -237,36 +342,80 @@ Attention weight가 계산된 뒤 weighted sum에 사용되는 representation이
 
 초기 Encoder-Decoder Attention을 Q/K/V 관점으로 다시 보면 이해가 쉬워진다.
 
-- Query: 현재 Decoder state
-- Key: Encoder hidden states
-- Value: Encoder hidden states에서 가져올 정보
+가장 기본적인 형태에서는,
 
-즉 Decoder는
-
-> "현재 출력 token을 만들기 위해 Encoder의 어느 부분이 필요한가?"
-
-라는 Query를 가지고 Encoder 전체를 검색한다고 볼 수 있다.
-
-개념적으로,
-
-$$
-Q = \text{Decoder state}
-$$
-
-$$
-K,V = \text{Encoder representations}
-$$
+- Query: 현재 Decoder state $s_t$
+- Key: Encoder hidden states $h_1, h_2, \dots, h_T$
+- Value: Encoder hidden states $h_1, h_2, \dots, h_T$ 자체
 
 이다.
+
+즉,
+
+$$
+Q=s_t
+$$
+
+$$
+K_i=h_i,\qquad V_i=h_i
+$$
+
+라고 생각할 수 있다.
+
+Decoder는
+
+> "현재 출력 token을 만들기 위해 Encoder의 어느 부분을 얼마나 참고해야 하는가?"
+
+라는 Query를 가지고 Encoder 전체를 검색한다.
+
+먼저 Query와 각 Key를 비교해 attention weight를 만들고,
+
+$$
+\alpha_{t,i}
+=
+softmax(score(s_t,h_i))
+$$
+
+그 weight로 Value, 즉 Encoder hidden states를 가중합한다.
+
+$$
+c_t
+=
+\sum_i \alpha_{t,i}h_i
+$$
+
+이 $c_t$가 현재 timestep의 context vector이다.
+
+그리고 이 context vector를 현재 Decoder state와 함께 사용해 출력 token을 예측한다.
+
+```text
+Decoder state s_t
+        │
+        │ Query
+        ↓
+ h1     h2     ...     hT
+ Key    Key            Key
+ Value  Value          Value
+        │
+        ↓ Q-K comparison
+ attention weights α_t
+        │
+        ↓ weighted sum of Values
+ context vector c_t
+        │
+        ├──── s_t
+        ↓
+ output prediction
+```
 
 ### Why is the Decoder State the Query?
 
 Decoder가 지금 생성하려는 출력에 따라 필요한 입력 정보가 달라지기 때문이다.
 
 따라서 Decoder의 현재 state가 **찾는 쪽**이 되고,  
-Encoder hidden states가 **찾아볼 대상**이 된다.
+Encoder hidden states가 **찾아볼 대상이자 실제로 가져올 내용**이 된다.
 
-이 구조에서 Attention은 입력 sequence 전체를 다시 참고할 수 있게 해준다.
+이 구조에서 Attention은 입력 sequence 전체를 매 timestep마다 다시 참고할 수 있게 해준다.
 
 ---
 
@@ -275,12 +424,16 @@ Encoder hidden states가 **찾아볼 대상**이 된다.
 Encoder-Decoder Attention에서는 Q와 K/V의 출처가 달랐다.
 
 ```text
-Query  ← Decoder
-Key    ← Encoder
-Value  ← Encoder
+Query  ← Decoder state
+Key    ← Encoder hidden states
+Value  ← Encoder hidden states
 ```
 
-Self-Attention에서는 한 sequence 안의 token들이 **서로를 참고한다.**
+즉 **Decoder가 Encoder를 바라보는 Attention**이었다.
+
+Self-Attention에서는 이 구조가 한 sequence 내부로 들어온다.
+
+> **한 sequence 안의 각 token이 다른 token들을 직접 참고한다.**
 
 즉 Q/K/V가 모두 같은 입력 $X$로부터 만들어진다.
 
@@ -290,6 +443,38 @@ Self-Attention에서는 한 sequence 안의 token들이 **서로를 참고한다
           ↓     ↓     ↓
          Q      K      V
 ```
+
+각 token은 자신의 Query를 만들고, 그 Query로 sequence 안의 모든 token의 Key와 비교한다.
+
+예를 들어 token $i$라면,
+
+$$
+q_i
+$$
+
+가
+
+$$
+k_1,k_2,\dots,k_T
+$$
+
+전체와 비교되고, 만들어진 attention weight로
+
+$$
+v_1,v_2,\dots,v_T
+$$
+
+를 가중합하여 token $i$의 새로운 representation을 만든다.
+
+그래서 Encoder-Decoder Attention에서
+
+> **Decoder state가 Encoder hidden states를 본다**
+
+였다면, Self-Attention에서는
+
+> **각 token이 같은 sequence의 모든 token을 본다**
+
+로 바뀐다고 생각하면 된다.
 
 하지만 Q, K, V가 같은 값이라는 뜻은 아니다.
 
@@ -1065,6 +1250,26 @@ $$
 
 ---
 
+### Encoder-Decoder Attention의 기본 형태에서는 Key와 Value가 같은 hidden state일 수 있다
+
+가장 기본적인 형태에서는
+
+$$
+K_i=h_i,\qquad V_i=h_i
+$$
+
+처럼 Encoder hidden state 자체가 Key와 Value의 역할을 함께 한다.
+
+이때 Query는 Decoder state에서 온다.
+
+$$
+Q=s_t
+$$
+
+따라서 Q/K/V가 모두 hidden representation이기는 하지만 **출처가 모두 같은 것은 아니다.**
+
+---
+
 ### Self-Attention에서 Q/K/V의 source는 같지만 값은 다르다
 
 모두 $X$에서 나오지만,
@@ -1125,16 +1330,20 @@ Attention을 배우면서 가장 중요한 흐름은 다음과 같다.
 
 > 하나의 fixed context vector에 모든 정보를 압축하지 않고,  
 > Decoder가 필요한 순간마다 Encoder hidden states 전체를 다시 참고한다.
+>
+> 현재 Decoder state를 Query로 사용해 각 Encoder hidden state와 관련성을 계산하고,  
+> 그 attention weight로 Encoder hidden states를 가중합하여 timestep별 context vector를 만든다.  
+> 이 context vector는 Decoder state와 함께 현재 출력 token을 예측하는 데 사용된다.
 
 ### Q/K/V
 
-> Query와 Key를 비교해서 어디를 볼지 정하고,  
-> 그 attention weight를 이용해 Value의 정보를 가져온다.
+> Query와 Key를 비교해서 어디를 얼마나 볼지 정하고,  
+> 그 attention weight를 이용해 Value들을 가중합하여 attention output을 만든다.
 
 ### Self-Attention
 
-> 같은 sequence의 token들이 서로를 참고하면서  
-> 각 token을 문맥이 반영된 contextual representation으로 바꾼다.
+> 같은 sequence의 각 token이 자신의 Query로 다른 모든 token의 Key와 비교하고,  
+> 해당 Value들을 가중합하면서 각 token을 문맥이 반영된 contextual representation으로 바꾼다.
 
 ### Multi-Head Attention
 
