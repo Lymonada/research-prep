@@ -72,14 +72,14 @@ $$
 
 Attention을 사용하면 Decoder의 각 timestep마다 이 전체 hidden states를 다시 참고한다.
 
-예를 들어 Decoder가 현재 timestep \(t\)에서 state \(s_t\)를 가지고 있다면,
+예를 들어 Decoder가 현재 timestep $t$에서 state $s_t$를 가지고 있다면,
 
 ```text
 Encoder hidden states
 h1   h2   h3   ...   hT
  \    |   /           /
   \   |  /           /
-   relevance scores
+   attention scores
          ↑
    Decoder state st
 ```
@@ -122,7 +122,7 @@ $$
 {\sum_j \exp(e_j)}
 $$
 
-이때 \(\alpha_i\)가 각 정보가 얼마나 중요하게 사용될지를 나타낸다.
+이때 $\alpha_i$가 각 정보가 얼마나 중요하게 사용될지를 나타낸다.
 
 ```text
 scores
@@ -145,7 +145,7 @@ c =
 \sum_i \alpha_i v_i
 $$
 
-이렇게 얻은 \(c\)가 **context vector / attention output**이다.
+이렇게 얻은 $c$가 **context vector / attention output**이다.
 
 즉 Attention은 후보 정보를 하나 선택하는 것이 아니라,  
 중요도에 따라 여러 Value를 가중합하여 새로운 representation을 만든다.
@@ -175,7 +175,7 @@ context vector
 
 ## 4. Attention Weight Is Not a Learned Parameter
 
-Attention weight \(\alpha\) 자체는 모델이 직접 저장하고 학습하는 parameter가 아니다.
+Attention weight $\alpha$ 자체는 모델이 직접 저장하고 학습하는 parameter가 아니다.
 
 $$
 \alpha =
@@ -215,7 +215,7 @@ Attention을 일반적인 형태로 표현하기 위해 Q/K/V 개념을 사용�
 
 > 내가 가진 정보가 어떤 정보인지 비교하기 위한 representation
 
-Query와 비교되어 relevance score를 만드는 역할을 한다.
+Query와 비교되어 attention score를 만드는 역할을 한다.
 
 ---
 
@@ -282,7 +282,7 @@ Value  ← Encoder
 
 Self-Attention에서는 한 sequence 안의 token들이 **서로를 참고한다.**
 
-즉 Q/K/V가 모두 같은 입력 \(X\)로부터 만들어진다.
+즉 Q/K/V가 모두 같은 입력 $X$로부터 만들어진다.
 
 ```text
                 X
@@ -307,7 +307,7 @@ $$
 V=XW_V
 $$
 
-따라서 같은 token \(x_i\)라도
+따라서 같은 token $x_i$라도
 
 $$
 q_i = x_iW_Q,\quad
@@ -323,7 +323,7 @@ $$
 
 Self-Attention에서는 각 token이 sequence의 다른 token들과 관계를 계산한다.
 
-예를 들어 token \(i\)의 Query \(q_i\)와 모든 Key를 비교한다.
+예를 들어 token $i$의 Query $q_i$와 모든 Key를 비교한다.
 
 $$
 q_i k_1^T,\quad
@@ -346,11 +346,11 @@ z_i =
 \alpha_{ij}v_j
 $$
 
-로 token \(i\)의 새로운 representation을 만든다.
+로 token $i$의 새로운 representation을 만든다.
 
-즉 \(z_i\)는 더 이상 token \(i\) 자신의 정보만 담고 있는 것이 아니다.
+즉 $z_i$는 더 이상 token $i$ 자신의 정보만 담고 있는 것이 아니다.
 
-> token \(i\)가 sequence 전체를 보고, 자신과 관련 있는 다른 token들의 정보를 반영한  
+> token $i$가 sequence 전체를 보고, 자신과 관련 있는 다른 token들의 정보를 반영한  
 > **contextual representation**이다.
 
 ---
@@ -369,20 +369,20 @@ $$
 
 각 부분의 의미는 다음과 같다.
 
-### \(QK^T\)
+### $QK^T$
 
 각 Query와 모든 Key 사이의 dot product를 계산한다.
 
-즉 token 간 relevance score matrix를 만든다.
+즉 token 간 attention score matrix를 만든다.
 
 ---
 
-### \(\sqrt{d_k}\)로 나누기
+### $\sqrt{d_k}$로 나누기
 
 차원이 커질수록 dot product의 값도 커질 수 있다.
 
 score가 지나치게 커지면 softmax가 매우 뾰족해지고 gradient가 작아질 수 있으므로  
-\(\sqrt{d_k}\)로 scale을 조정한다.
+$\sqrt{d_k}$로 scale을 조정한다.
 
 ---
 
@@ -394,7 +394,7 @@ score가 지나치게 커지면 softmax가 매우 뾰족해지고 gradient가 �
 
 ---
 
-### Multiply by \(V\)
+### Multiply by $V$
 
 attention weight를 이용해 Value들을 weighted sum한다.
 
@@ -455,9 +455,9 @@ $$
 
 를 얻는다.
 
-마지막 두 개의 \(T\)가 의미하는 것은,
+마지막 두 개의 $T$가 의미하는 것은,
 
-> 각 Query token \(T\)개가 모든 Key token \(T\)개와 관계를 계산한다
+> 각 Query token $T$개가 모든 Key token $T$개와 관계를 계산한다
 
 는 것이다.
 
@@ -522,7 +522,7 @@ $$
 
 이다.
 
-각 head \(i\)는 개념적으로 자신의 projection matrix를 가진다.
+각 head $i$는 개념적으로 자신의 projection matrix를 가진다.
 
 $$
 W_Q^{(i)}:[512,64]
@@ -798,7 +798,7 @@ $$
 
 이다.
 
-\(QK^T\)를 계산할 때는 **K의 마지막 두 차원**을 transpose한다.
+$QK^T$를 계산할 때는 **K의 마지막 두 차원**을 transpose한다.
 
 $$
 K^T:[B,8,64,T]
@@ -821,7 +821,7 @@ $$
 이다.
 
 여기서 8은 head 개수이므로  
-각 head마다 독립적인 \(T\times T\) attention score matrix가 존재한다.
+각 head마다 독립적인 $T\times T$ attention score matrix가 존재한다.
 
 Softmax 이후에도
 
@@ -859,7 +859,7 @@ $$
 
 이 tensor 안에는 모든 batch, 모든 head, 모든 token의 output이 들어 있다.
 
-특정 token \(i\), 특정 head \(r\)의 output을
+특정 token $i$, 특정 head $r$의 output을
 
 $$
 z_i^{(r)}
@@ -899,7 +899,7 @@ $$
 
 가 된다.
 
-token \(i\) 하나만 보면,
+token $i$ 하나만 보면,
 
 $$
 Concat
@@ -919,7 +919,7 @@ $$
 
 ---
 
-## 20. Output Projection \(W_O\)
+## 20. Output Projection $W_O$
 
 Multi-Head Attention의 완성된 식은 다음과 같다.
 
@@ -948,7 +948,7 @@ $$
 
 가 된다.
 
-### Why \(W_O\)?
+### Why $W_O$?
 
 Concat만 한 상태는 각 head에서 얻은 feature들을 단순히 옆에 붙여놓은 상태이다.
 
@@ -956,7 +956,7 @@ Concat만 한 상태는 각 head에서 얻은 feature들을 단순히 옆에 붙
 head 1 information | head 2 information | ... | head 8 information
 ```
 
-\(W_O\)는 이 전체 feature를 다시 linear projection하여  
+$W_O$는 이 전체 feature를 다시 linear projection하여  
 여러 head에서 얻은 정보를 서로 섞고 통합하는 역할을 한다.
 
 ---
@@ -1049,7 +1049,7 @@ Multi-Head Attention Output
 ### Attention score is not necessarily a dot product
 
 Dot product is one scoring method.  
-Attention의 본질은 Query와 Key 사이의 relevance를 계산하는 것이다.
+Attention의 본질은 Query와 Key 사이의 attention score를 계산하는 것이다.
 
 ---
 
@@ -1067,7 +1067,7 @@ $$
 
 ### Self-Attention에서 Q/K/V의 source는 같지만 값은 다르다
 
-모두 \(X\)에서 나오지만,
+모두 $X$에서 나오지만,
 
 $$
 W_Q,\quad W_K,\quad W_V
@@ -1079,8 +1079,8 @@ $$
 
 ### A head does not see only part of the original input features
 
-각 head는 원래 \(d_{model}\) 전체를 입력으로 보고  
-자신의 \(d_{head}\) projection space로 투영한다.
+각 head는 원래 $d_{model}$ 전체를 입력으로 보고  
+자신의 $d_{head}$ projection space로 투영한다.
 
 ---
 
@@ -1091,7 +1091,7 @@ $$
 
 ---
 
-### \(QK^T\)에서 transpose하는 것은 K이다
+### $QK^T$에서 transpose하는 것은 K이다
 
 $$
 Q:[B,h,T,d_{head}]
@@ -1104,7 +1104,7 @@ $$
 이다.
 
 앞서 `[B,T,h,d_head] → [B,h,T,d_head]`로 바꾸는 transpose/permute와  
-\(QK^T\)에서의 \(K^T\)는 목적이 다른 연산이다.
+$QK^T$에서의 $K^T$는 목적이 다른 연산이다.
 
 ---
 
