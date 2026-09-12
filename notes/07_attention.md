@@ -677,7 +677,7 @@ Self-Attention에서는 Query와 Key가 같은 입력 sequence에서 만들어�
 
 ---
 
-## 11. Limitation of a Single Attention Head
+## 11. Limitation of a Single Head Attention
 
 Single-head attention에서도 한 token은 sequence 전체를 참고할 수 있다.
 
