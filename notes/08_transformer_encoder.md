@@ -1749,46 +1749,624 @@ LayerNorm
 
 ---
 
-## 45. Where This Note Stops
+## 45. From One Encoder Block to the Full Encoder
 
-이 문서는 **Transformer Encoder Block 하나가 어떻게 동작하는지**까지 다룬다.
+지금까지는 Transformer **Encoder Block 하나**의 내부 구조를 이해했다.
 
-현재까지의 학습 흐름은,
+하지만 실제 Transformer Encoder는 보통 이 block 하나로 끝나지 않는다.
+
+전체 Encoder를 이해하려면 block 앞의 입력 준비 과정과 block을 여러 층 쌓는 구조까지 연결해야 한다.
+
+전체 흐름은 다음과 같다.
+
+```text
+Token IDs
+↓
+Token Embedding
+↓
++ Positional Encoding
+↓
+X^(0) [B,T,d_model]
+↓
+Encoder Block 1
+↓
+X^(1) [B,T,d_model]
+↓
+Encoder Block 2
+↓
+X^(2) [B,T,d_model]
+↓
+...
+↓
+Encoder Block N
+↓
+Encoder Output X^(N)
+[B,T,d_model]
+```
+
+---
+
+## 46. Token Embedding Before the Encoder
+
+Transformer에 text token을 그대로 넣을 수는 없다.
+
+먼저 tokenizer가 각 token에 **token ID**를 부여한다.
+
+예를 들어 개념적으로,
+
+```text
+"I"    → 17
+"love" → 203
+"cats" → 891
+```
+
+처럼 표현할 수 있다.
+
+여기서 `17`, `203`, `891`이라는 숫자 자체에 의미가 있는 것은 아니다.  
+이 값들은 vocabulary 안에서 해당 token을 찾기 위한 **번호표 / index**에 가깝다.
+
+모델에는 학습 가능한 embedding matrix가 있다.
+
+$$
+E:[V,d_{model}]
+$$
+
+여기서 $V$는 vocabulary size이다.
+
+각 token ID는 embedding matrix에서 하나의 $d_{model}$차원 vector를 가져온다.
+
+```text
+Token
+↓
+Token ID
+↓
+Embedding lookup
+↓
+Embedding vector [d_model]
+```
+
+sequence 전체와 batch까지 고려하면,
+
+$$
+X_{embed}:[B,T,d_{model}]
+$$
+
+이다.
+
+Embedding vector는 사람이 미리 각 의미를 직접 넣어주는 것이 아니라, 모델 학습 과정에서 다른 parameter들과 함께 backpropagation으로 학습된다.
+
+현재 Transformer 구조를 이해하는 단계에서는
+
+> **token ID는 index이고, Token Embedding은 그 token을 $d_{model}$차원의 학습 가능한 representation으로 바꾸는 과정**
+
+정도로 이해하면 충분하다.
+
+---
+
+## 47. Why Positional Encoding Is Needed
+
+RNN은 sequence를 시간 순서대로 처리한다.
+
+```text
+x1 → h1 → x2 → h2 → x3 → h3 → ...
+```
+
+따라서 recurrent computation 구조 자체에 순서가 포함되어 있다.
+
+반면 Self-Attention은 모든 token의 Q/K/V를 병렬적으로 만들고 token 간 관계를 한꺼번에 계산할 수 있다.
+
+즉 Self-Attention 연산 자체에는
+
+> "이 token이 먼저 나왔는가, 나중에 나왔는가"
+
+라는 순서 정보가 자동으로 들어 있지 않다.
+
+그래서 token representation에 별도의 **position signal**을 넣어준다.
+
+---
+
+## 48. Adding Token and Position Information
+
+Token Embedding을
+
+$$
+X_{embed}:[B,T,d_{model}]
+$$
+
+이라고 하자.
+
+각 sequence position에 대응하는 Positional Encoding은 개념적으로
+
+$$
+P:[T,d_{model}]
+$$
+
+이다.
+
+두 값을 element-wise로 더한다.
+
+$$
+X^{(0)} = X_{embed}+P
+$$
+
+broadcasting을 이용하면 같은 positional encoding을 각 batch에 적용할 수 있으므로 결과 shape은 그대로
+
+$$
+X^{(0)}:[B,T,d_{model}]
+$$
+
+이다.
+
+예를 들어 같은 `cat` token이라도 위치가 다르면,
+
+$$
+e_{cat}+p_1
+$$
+
+과
+
+$$
+e_{cat}+p_5
+$$
+
+처럼 Transformer가 받는 input representation 자체가 달라진다.
+
+따라서 모델은 token의 내용뿐 아니라 position에 따른 차이도 attention 계산에 사용할 수 있다.
+
+---
+
+## 49. Does Adding Position Destroy Token Information?
+
+Token Embedding과 Positional Encoding을 더하면 두 정보가 한 vector 안에 섞인다.
+
+하지만 Transformer가 이 둘을 다시 사람처럼
+
+```text
+이 부분 = token meaning
+이 부분 = position
+```
+
+으로 명시적으로 분리할 필요는 없다.
+
+Self-Attention의 projection을 보면,
+
+$$
+Q=XW_Q,
+\quad
+K=XW_K,
+\quad
+V=XW_V
+$$
+
+이고,
+
+$$
+X=E+P
+$$
+
+이므로 예를 들어
+
+$$
+Q=(E+P)W_Q
+$$
+
+가 된다.
+
+즉 Q/K/V projection부터 이미 **token information과 positional information이 결합된 representation**을 입력으로 받는다.
+
+모델의 learned weights는 학습을 통해 이 결합된 정보를 task에 유용한 방식으로 활용한다.
+
+중요한 intuition은,
+
+> 모델이 token과 position을 다시 완벽하게 분리하는 법을 배우는 것이 아니라, **"이 token이 이 위치에 있다"는 결합된 representation을 유용하게 사용하는 법을 학습한다**
+
+는 것이다.
+
+---
+
+## 50. Sinusoidal Positional Encoding
+
+원래 Transformer에서는 sin/cos 함수를 이용한 positional encoding을 사용했다.
+
+$$
+PE(pos,2i)=
+\sin\left(
+\frac{pos}{10000^{2i/d_{model}}}
+\right)
+$$
+
+$$
+PE(pos,2i+1)=
+\cos\left(
+\frac{pos}{10000^{2i/d_{model}}}
+\right)
+$$
+
+이 식 자체를 암기하는 것이 현재 학습의 목표는 아니다.
+
+핵심은 각 dimension이 서로 다른 주기의 sin/cos pattern을 사용하기 때문에 position이 변할 때 positional vector도 **규칙적인 방식으로 변한다**는 것이다.
+
+완전히 random한 vector를 각 position에 붙여도 position 자체를 서로 구별하는 것은 가능하다.
+
+하지만 random vector에는 위치 사이의 관계에 특별한 구조가 없다.
+
+반면 sinusoidal encoding에서는 위치가 이동할 때 vector가 규칙적으로 변하므로 모델이
+
+- 상대적인 위치
+- 위치 사이의 이동
+- 거리와 관련된 pattern
+
+을 활용하기 좋은 구조를 제공한다.
+
+이것이 모델에게 `3칸 차이`라는 정수를 직접 제공한다는 뜻은 아니다.  
+정확히는 **위치 사이의 상대적 관계를 학습에 활용할 수 있는 structured signal을 제공한다**는 의미이다.
+
+---
+
+## 51. Where Positional Encoding Enters
+
+Positional Encoding은 Multi-Head Attention이 끝난 뒤에 넣는 것이 아니다.
+
+**첫 Encoder Block에 들어가기 전에** Token Embedding에 더한다.
+
+```text
+Token IDs
+↓
+Token Embedding
+[B,T,d_model]
+
+        +
+
+Positional Encoding
+[T,d_model]
+
+        ↓
+
+X^(0)
+[B,T,d_model]
+
+        ↓
+
+Encoder Block 1
+```
+
+그래야 첫 Self-Attention에서 Q/K/V를 만들 때부터 position information을 사용할 수 있다.
+
+---
+
+## 52. Multi-Head vs Multiple Encoder Layers
+
+한 Encoder Block 안의 Multi-Head Attention도 이미 여러 관계를 병렬적으로 학습할 수 있다.
+
+그렇다면 왜 Encoder Block 자체를 다시 여러 층 쌓는지가 중요한 질문이다.
+
+둘의 역할은 다음처럼 구분하면 좋다.
+
+> **Multi-Head:** 같은 layer의 같은 input representation을 여러 learned projection space에서 병렬적으로 바라본다.
+
+> **Multiple Encoder Layers:** 한 layer에서 이미 contextualized된 representation을 다음 layer의 새로운 input으로 사용하여 다시 Attention과 FFN을 수행한다.
+
+첫 block에서는
+
+$$
+X^{(0)}
+\rightarrow
+Encoder_1
+\rightarrow
+X^{(1)}
+$$
+
+이다.
+
+두 번째 block은 원래 embedding을 다시 보는 것이 아니라,
+
+$$
+X^{(1)}
+\rightarrow
+Encoder_2
+\rightarrow
+X^{(2)}
+$$
+
+처럼 **이미 한 번 문맥화된 representation들 사이의 관계를 다시 계산**한다.
+
+따라서 여러 layer를 쌓는다는 것은 단순히 같은 관계를 더 많이 보는 것만을 의미하지 않는다.
+
+- 이미 만들어진 관계를 다시 해석할 수 있고
+- 여러 관계를 조합할 수 있으며
+- representation을 반복적으로 refinement할 수 있다.
+
+단, 특정 layer가 반드시 `문법`, 다음 layer가 반드시 `의미`처럼 고정된 역할을 가진다고 이해하면 안 된다.
+
+---
+
+## 53. Why the Shape Stays the Same Across Encoder Blocks
+
+Encoder Block 하나의 input과 output은 모두
+
+$$
+[B,T,d_{model}]
+$$
+
+이다.
+
+Multi-Head Attention은 head들을 concatenate한 뒤 $W_O$를 통해 다시 $d_{model}$로 돌아온다.
+
+FFN도 내부적으로
+
+$$
+d_{model}
+\rightarrow
+d_{ff}
+\rightarrow
+d_{model}
+$$
+
+로 확장했다가 다시 돌아온다.
+
+따라서,
+
+```text
+X^(0) [B,T,d_model]
+↓ Encoder 1
+X^(1) [B,T,d_model]
+↓ Encoder 2
+X^(2) [B,T,d_model]
+↓ Encoder 3
+X^(3) [B,T,d_model]
+```
+
+처럼 block을 연속해서 연결할 수 있다.
+
+> **shape은 유지되지만 representation의 값과 의미는 계속 변한다.**
+
+---
+
+## 54. Do Encoder Blocks Share Parameters?
+
+일반적인 Transformer에서는 서로 다른 Encoder Block이 같은 parameter를 반복해서 재사용하지 않는다.
+
+예를 들어 Encoder Block 1에는 자신만의
+
+$$
+W_Q^{(1)},
+W_K^{(1)},
+W_V^{(1)},
+W_O^{(1)}
+$$
+
+와 FFN / LayerNorm parameter가 있다.
+
+Encoder Block 2에는 별도의
+
+$$
+W_Q^{(2)},
+W_K^{(2)},
+W_V^{(2)},
+W_O^{(2)}
+$$
+
+와 FFN / LayerNorm parameter가 있다.
+
+즉,
+
+> **구조는 같지만 각 layer의 학습 parameter는 보통 서로 다르다.**
+
+그래서 각 layer는 자신에게 들어온 단계의 representation을 서로 다른 transformation으로 가공할 수 있다.
+
+---
+
+## 55. Padding Mask
+
+실제 batch에서는 문장마다 sequence length가 다를 수 있다.
+
+예를 들어,
+
+```text
+I love cats <PAD> <PAD>
+I really love this movie
+```
+
+처럼 짧은 sequence 뒤에 `<PAD>` token을 추가해 길이를 맞출 수 있다.
+
+하지만 `<PAD>`는 실제 문장 내용이 아니므로 Self-Attention이 이 위치를 참고해서는 안 된다.
+
+그래서 **Padding Mask**를 사용한다.
+
+Attention score가 예를 들어,
+
+```text
+real real real PAD PAD
+2.1  1.4  0.8  0.3 0.5
+```
+
+라면 softmax 전에 PAD 위치를 사실상 $-\infty$로 만든다.
+
+```text
+[2.1, 1.4, 0.8, -∞, -∞]
+```
+
+softmax 이후에는 PAD 위치의 attention weight가 0이 된다.
+
+```text
+[0.58, 0.29, 0.13, 0, 0]
+```
+
+따라서 Value weighted sum에 PAD 정보가 들어오지 않는다.
+
+핵심은,
+
+> **Padding Mask = "이 위치는 실제 sequence 정보가 아니므로 attention하지 마"라고 알려주는 장치**
+
+이다.
+
+이 mask는 이후 Decoder에서 배우게 될 **Causal / Look-Ahead Mask**와 목적이 다르다.
+
+---
+
+## 56. Complete Transformer Encoder Flow
+
+지금까지의 내용을 하나로 연결하면 다음과 같다.
+
+```text
+Input text
+↓
+Tokenization
+↓
+Token IDs
+↓
+Token Embedding
+[B,T,d_model]
+↓
++ Positional Encoding
+↓
+X^(0)
+[B,T,d_model]
+↓
+
+Encoder Block 1
+  Multi-Head Self-Attention
+  + Padding Mask when needed
+  Residual + LayerNorm
+  FFN
+  Residual + LayerNorm
+↓
+X^(1)
+[B,T,d_model]
+↓
+
+Encoder Block 2
+↓
+X^(2)
+[B,T,d_model]
+↓
+...
+↓
+Encoder Block N
+↓
+
+Final Encoder Output X^(N)
+[B,T,d_model]
+```
+
+---
+
+## 57. What Does the Encoder Finally Output?
+
+Transformer Encoder는 입력 sequence 전체를 하나의 vector로 압축해서 출력하는 것이 아니다.
+
+최종 output은
+
+$$
+X^{(N)}:[B,T,d_{model}]
+$$
+
+이다.
+
+즉 **각 input token마다 하나의 최종 contextual representation이 남아 있다.**
+
+예를 들어,
+
+```text
+The   cat   sat   on   mat
+ ↓     ↓     ↓     ↓    ↓
+z1    z2    z3    z4   z5
+```
+
+각각
+
+$$
+z_i\in\mathbb{R}^{d_{model}}
+$$
+
+이다.
+
+하지만 이 $z_i$는 처음의 단순 Token Embedding과 다르다.
+
+예를 들어 `cat`의 최종 $z_{cat}$은 단순히 사전적인 `cat`의 representation이 아니라, 여러 Encoder layer를 거치며 다른 token들과 상호작용한
+
+> **"이 문장 안에서의 cat"에 대한 contextualized representation**
+
+이라고 볼 수 있다.
+
+---
+
+## 58. Connection to the Decoder
+
+초기 Encoder-Decoder Attention에서 배웠던 구조는
+
+$$
+Q=\text{Decoder state}
+$$
+
+$$
+K,V=\text{Encoder hidden representations}
+$$
+
+였다.
+
+Transformer에서도 이 intuition이 그대로 이어진다.
+
+Encoder의 최종 output
+
+$$
+X^{(N)}:[B,T_{src},d_{model}]
+$$
+
+전체가 이후 Decoder의 **Cross-Attention에서 K/V의 source**가 된다.
+
+즉 Transformer Encoder는 각 source token의 contextual representation을 모두 유지해 두고, Decoder가 필요한 시점마다 이를 참고할 수 있게 한다.
+
+---
+
+## 59. Final Encoder Summary
+
+Transformer Encoder 전체를 가장 압축해서 정리하면 다음과 같다.
+
+> **Token을 embedding vector로 바꾸고 positional information을 더한 뒤, 여러 Encoder Block에서 Self-Attention과 FFN을 반복하여 각 token representation을 점점 문맥화한다. Padding 위치는 mask로 attention에서 제외한다. 최종적으로 모든 input token의 contextual representation `[B,T,d_model]`을 출력하며, 이 representation들은 이후 Decoder Cross-Attention에서 사용된다.**
+
+현재까지 완료한 흐름:
 
 ```text
 RNN / LSTM / GRU
 ↓
 Encoder-Decoder Attention
 ↓
+Q / K / V
+↓
 Self-Attention
+↓
+Scaled Dot-Product Attention
 ↓
 Multi-Head Attention
 ↓
-Residual Connection
+Residual Connection + LayerNorm
 ↓
-Layer Normalization
+FFN
 ↓
-Feed Forward Network
+One Encoder Block
 ↓
-Transformer Encoder Block
+Token Embedding + Positional Encoding
+↓
+Stacked Encoder Blocks
+↓
+Padding Mask
+↓
+Complete Transformer Encoder ✅
 ```
 
-까지 도달했다.
-
-다음 단계에서는,
+다음 학습 단계는 **Transformer Decoder**이다.
 
 ```text
-Why stack multiple Encoder Blocks?
+Decoder input / overall structure
 ↓
-Positional Encoding
+Masked (Causal) Self-Attention
 ↓
-Transformer Decoder
+Encoder-Decoder Cross-Attention
 ↓
-Masked Self-Attention
+Decoder FFN / Residual / LayerNorm
 ↓
-Cross-Attention
+Stacked Decoder Blocks
 ↓
 Complete Transformer
 ```
-
-흐름으로 이어갈 수 있다.
