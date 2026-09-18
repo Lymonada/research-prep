@@ -616,8 +616,7 @@ cats    0.2
 라면,
 
 $$
-c_3
-=
+c_3 =
 0.1V_{I}
 +
 0.7V_{love}
@@ -684,8 +683,7 @@ $$
 라고 하면 원래 Transformer의 Post-Norm 기준으로,
 
 $$
-H^{(1)}
-=
+H^{(1)} =
 LayerNorm(X+A)
 $$
 
@@ -724,8 +722,7 @@ $$
 라고 하면,
 
 $$
-H^{(2)}
-=
+H^{(2)} =
 LayerNorm(H^{(1)}+C)
 $$
 
@@ -792,8 +789,7 @@ FFN은 다른 token을 새롭게 참고하지 않고, 각 token representation �
 FFN 이후에도 Residual Connection과 LayerNorm을 적용한다.
 
 $$
-H^{(3)}
-=
+H^{(3)} =
 LayerNorm(H^{(2)}+F)
 $$
 
@@ -874,8 +870,7 @@ $$
 ### First Residual + LayerNorm
 
 $$
-h_3^{(1)}
-=
+h_3^{(1)} =
 LayerNorm(x_3+a_3)
 $$
 
@@ -888,8 +883,7 @@ $h_3^{(1)}$로 Query를 만들고 Encoder의 `I / love / cats` representations�
 ### Second Residual + LayerNorm
 
 $$
-h_3^{(2)}
-=
+h_3^{(2)} =
 LayerNorm(h_3^{(1)}+c_3)
 $$
 
@@ -898,8 +892,7 @@ $$
 ### FFN + Third Add & Norm
 
 $$
-h_3^{(3)}
-=
+h_3^{(3)} =
 LayerNorm
 \left(
 h_3^{(2)}+FFN(h_3^{(2)})
@@ -1123,8 +1116,7 @@ Linear layer output은 확률이 아니라 **logits**이다.
 Softmax를 적용하면 확률 분포처럼 해석할 수 있다.
 
 $$
-P(y_{t+1}=j)
-=
+P(y_{t+1}=j) =
 \frac{e^{logit_j}}
 {\sum_k e^{logit_k}}
 $$
@@ -1184,8 +1176,7 @@ $$
 보통 유효한 token들의 loss를 평균하거나 합쳐 최종적으로 하나의 scalar loss를 만든다.
 
 $$
-L
-=
+L =
 \frac{1}{T}
 \sum_{t=1}^{T}L_t
 $$
@@ -1362,8 +1353,7 @@ $$
 한 번에 독립적으로 예측하는 것이 아니라,
 
 $$
-P(y_1,\dots,y_T\mid x)
-=
+P(y_1,\dots,y_T\mid x) =
 \prod_{t=1}^{T}
 P(y_t\mid y_{<t},x)
 $$
