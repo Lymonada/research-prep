@@ -61,8 +61,24 @@ def attention(Q, K, V):
     return output, att_weights
 
 
+####################
+# attention() Test #
+#####################
 
+if __name__ == "__main__":
+    B=2
+    h=4
+    T_q=5
+    T_k=7
+    d_k=8
+    Q = torch.randn(B, h, T_q, d_k)
+    K = torch.randn(B, h, T_k, d_k)
+    V = torch.randn(B, h, T_k, d_k)
 
+    output , att_weights = attention(Q, K, V)
+    print(output.shape)
+    print(att_weights.shape)
+    print(att_weights.sum(dim=-1))
 
 ##########################################
 #   Embedding + Positional Encoding Test #
