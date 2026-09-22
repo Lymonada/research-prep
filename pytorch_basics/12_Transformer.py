@@ -52,13 +52,119 @@ class PositionalEncoding(nn.Module):
         return x
 
 # 3. Attention
-def attention(Q, K, V):
-    d_k = Q.size(-1)
-    K_trans = torch.transpose(K, 2, 3)
+def attention(Q, K, V): # Expected Q/K/V shape: [B, h, T, d_head]
+    d_k = Q.shape[-1]
+    K_trans = torch.transpose(K, -2, -1)
     att_scores = Q @ K_trans / math.sqrt(d_k)
     att_weights = F.softmax(att_scores, dim = -1)
     output = att_weights @ V
-    return output, att_weights
+    return output, att_weights # output: [B, h, T_q, d_k], att_weights: [B, h, T_q, T_k]
+
+# 4. Multi-Head Attention
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, num_heads):
+        super().__init__()
+
+        self.d_model = d_model
+        self.num_heads = num_heads
+        assert d_model % num_heads == 0
+        self.d_head = d_model // num_heads
+        self.W_Q = nn.Linear(d_model, d_model)
+        self.W_K = nn.Linear(d_model, d_model)
+        self.W_V = nn.Linear(d_model, d_model)
+        self.W_O = nn.Linear(d_model, d_model)
+    
+    def forward(self, query, key, value): # Expected query, key, value shape: [B, T, d_model]
+        Q = self.W_Q(query)
+        K = self.W_K(key)
+        V = self.W_V(value)
+
+        # Q/K/V를 head split 하고 head차원을 앞으로 옮기기
+        # ex) Q: [B, T_q, d_model] -> [B, T_q, h, d_head] -> [B, h, T_q, d_head]
+        Q = Q.unflatten(-1, (self.num_heads, self.d_head))
+        Q = torch.transpose(Q, 1, 2)
+
+        K = K.unflatten(-1, (self.num_heads, self.d_head))
+        K = torch.transpose(K, 1, 2)
+
+        V = V.unflatten(-1, (self.num_heads, self.d_head))
+        V = torch.transpose(V, 1, 2)
+
+        # attention에서 나온 output을 다시 원래 shape으로 돌려놓기 head_output [B,h,T_q,d_head] -> [B, T, d_model]
+        output, att_weights = attention(Q,K,V)
+        output = torch.transpose(output, 1, 2)
+        output = output.flatten(-2) # 
+
+        output = self.W_O(output)
+
+        return output, att_weights
+
+# 5. Feed-Forwad Network
+class FeedForward(nn.Module):
+    def __init__(self, d_model, d_ff):
+        super().__init__()
+        self.linear1 = nn.Linear(d_model, d_ff)
+        self.relu = nn.ReLU()
+        self.linear2 = nn.Linear(d_ff, d_model)
+
+    def forward(self, x): # Expected x shape: [B, T, d_model]
+        x = self.linear1(x)
+        x = self.relu(x)
+        output = self.linear2(x)
+        return output
+
+# 6. Residual Layer Norm
+class ResidualLayerNorm(nn.Module):
+    def __init__(self, d_model):
+        super().__init__()
+        self.layernorm = nn.LayerNorm(d_model)
+
+    def forward(self, x, sublayer_output):
+        x = x + sublayer_output
+        output = self.layernorm(x)
+        return output
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##############################
+# MultiHeadAttention Test
+##############################
+
+if __name__ == "__main__":
+    B = 2
+    T_q = 5
+    T_k = 7
+    d_model = 32
+    num_heads = 4
+
+    query = torch.randn(B, T_q, d_model)
+    key = torch.randn(B, T_k, d_model)
+    value = torch.randn(B, T_k, d_model)
+
+    mha = MultiHeadAttention(d_model, num_heads)
+
+    output, att_weights = mha(query, key, value)
+
+    print(output.shape)
+    print(att_weights.shape)
+    print(att_weights.sum(dim=-1))
+
+
 
 
 ####################
@@ -71,9 +177,10 @@ if __name__ == "__main__":
     T_q=5
     T_k=7
     d_k=8
+    d_v=6
     Q = torch.randn(B, h, T_q, d_k)
     K = torch.randn(B, h, T_k, d_k)
-    V = torch.randn(B, h, T_k, d_k)
+    V = torch.randn(B, h, T_k, d_v)
 
     output , att_weights = attention(Q, K, V)
     print(output.shape)
