@@ -93,14 +93,17 @@ class MultiHeadAttention(nn.Module):
         # attention에서 나온 output을 다시 원래 shape으로 돌려놓기 head_output [B,h,T_q,d_head] -> [B, T, d_model]
         output, att_weights = attention(Q,K,V)
         output = torch.transpose(output, 1, 2)
-        output = output.flatten(-2) # 
+        output = output.flatten(-2) # 숫자하나만 적으면 맨끝에 -1이 default값으로 들어가있어서 (-2,-1) 이렇게 처리됨. 즉 그 두개를 합침.
 
         output = self.W_O(output)
 
         return output, att_weights
 
+
+
+
 # 5. Feed-Forwad Network
-class FeedForward(nn.Module):
+class FFN(nn.Module):
     def __init__(self, d_model, d_ff):
         super().__init__()
         self.linear1 = nn.Linear(d_model, d_ff)
@@ -120,13 +123,69 @@ class ResidualLayerNorm(nn.Module):
         self.layernorm = nn.LayerNorm(d_model)
 
     def forward(self, x, sublayer_output):
-        x = x + sublayer_output
-        output = self.layernorm(x)
+        x = x + sublayer_output # Residual connection
+        output = self.layernorm(x) # Layernormalization
         return output
 
 
 
 
+# 7. Encoder Block
+## 하나의 encoder block이 어떻게 작동해야하는지 
+class EncoderBlock(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff):
+        super().__init__()
+
+        self.mha = MultiHeadAttention(d_model, num_heads)
+        self.add_norm1 = ResidualLayerNorm(d_model)
+        self.ffn = FFN(d_model, d_ff)
+        self.add_norm2 = ResidualLayerNorm(d_model)
+    def forward(self, x):
+        attn_output, attn_weights = self.mha(x,x,x) # multihead attention에서 새로운 representation과 attetion weight matrix 받기
+        residual_ln1 = self.add_norm1(x, attn_output) # 첫번쨰 add+norm 통과
+        ffn_output = self.ffn(residual_ln1) # FFN층 통과
+        residual_ln2 = self.add_norm2(residual_ln1, ffn_output) # 두번째 add+norm 통과
+        return residual_ln2, attn_weights
+
+# 8. Encoder
+## 실제로 encoder block들을 조립해서 작동하게 하기
+class Encoder(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, num_layers):
+        super().__init__()
+        self.layers = nn.ModuleList(
+            EncoderBlock(d_model, num_heads, d_ff) for i in range(num_layers)
+            )
+    
+    def forward(self, x): # x(encoder input) shape: [B, S, d_model]
+        all_attn_weights = []
+        for layer in self.layers:
+            x, attn_weights = layer(x)
+            all_attn_weights.append(attn_weights)
+        return x, all_attn_weights
+        
+
+
+
+# 9. Decoder Block 
+class DecoderBlock(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff):
+        super().__init__()
+
+        self.self_attn = MultiHeadAttention(d_model, num_heads)
+        self.add_norm1 = ResidualLayerNorm(d_model)
+        self.cross_attn = MultiHeadAttention(d_model, num_heads)
+        self.add_norm2 = ResidualLayerNorm(d_model)
+        self.ffn = FFN(d_model, d_ff)
+        self.add_norm3 = ResidualLayerNorm(d_model)
+
+    def forward(self, x, encoder_output, self_mask=None ,cross_mask=None): # x(decoder input) shape: [B, T, d_model] , encoder_output shape: [B, S, d_model]
+        self_attn_output, self_attn_weights = self.self_attn(x, x, x) # q/k/v 모두 decoder input을 가져와서 projection
+        residual_ln1 = self.add_norm1(x, self_attn_output)
+        cross_attn_output, cross_attn_weights = self.cross_attn(residual_ln1, encoder_output, encoder_output) # cross attention은 k/v를 encoder outputd에서 가져와서 projection
+        residual_ln2 = self.add_norm2(residual_ln1, cross_attn_output)
+        ffn_output = self.ffn(residual_ln2)
+        residual_ln3 = self.add_norm3(residual_ln2, ffn_output)
+        return residual_ln3, self_attn_weights, cross_attn_weights
 
 
 
@@ -135,7 +194,66 @@ class ResidualLayerNorm(nn.Module):
 
 
 
+################
+# Encoder test #
+################
 
+B = 2
+T = 5
+d_model = 8
+num_heads = 2
+d_ff = 32
+num_layers = 3
+0
+# [B, T, d_model]
+x = torch.randn(B, T, d_model)
+
+encoder = Encoder(
+    d_model=d_model,
+    num_heads=num_heads,
+    d_ff=d_ff,
+    num_layers=num_layers
+)
+
+output, all_attn_weights = encoder(x)
+
+print("input shape :", x.shape)
+print("output shape:", output.shape)
+
+print("number of attention matrices:", len(all_attn_weights))
+
+for i, attn_weights in enumerate(all_attn_weights):
+    print(f"layer {i+1} attention shape:", attn_weights.shape)
+    print(f"layer {i+1} attention sum:")
+    print(attn_weights.sum(dim=-1))
+
+
+#####################
+# Encoder Block test #
+#####################
+
+B = 2
+T = 5
+d_model = 8
+num_heads = 2
+d_ff = 32
+
+x = torch.randn(B, T, d_model)
+
+encoder_block = EncoderBlock(
+    d_model=d_model,
+    num_heads=num_heads,
+    d_ff=d_ff
+)
+
+output, attn_weights = encoder_block(x)
+
+print("input shape       :", x.shape)
+print("output shape      :", output.shape)
+print("attention shape   :", attn_weights.shape)
+
+# 각 query가 key 방향으로 만든 attention weight의 합
+print("attention sum     :", attn_weights.sum(dim=-1))
 
 
 
@@ -186,6 +304,10 @@ if __name__ == "__main__":
     print(output.shape)
     print(att_weights.shape)
     print(att_weights.sum(dim=-1))
+
+
+
+
 
 ##########################################
 #   Embedding + Positional Encoding Test #
