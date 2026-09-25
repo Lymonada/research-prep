@@ -194,6 +194,85 @@ class DecoderBlock(nn.Module):
         # self_attn_weights: [B,h, T, T] , cross_atnn_weights: [B, H, T, S]
         return residual_ln3, self_attn_weights, cross_attn_weights
 
+# 10. Decoder
+## 실제로 decoder block들을 조립해서 작동하게 하기
+class Decoder(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, num_layers):
+        super().__init__()
+        self.layers = nn.ModuleList(
+            DecoderBlock(d_model, num_heads, d_ff) for i in range(num_layers)
+            )
+    
+    def forward(self, x, encoder_output, self_mask=None, cross_mask=None): # x(decoder input) shape: [B, T, d_model]
+        all_self_attn_weights =[]
+        all_cross_attn_weights =[]
+        for layer in self.layers:
+            x, self_attn_weights, cross_attn_weights = layer(x, encoder_output)
+            all_self_attn_weights.append(self_attn_weights)
+            all_cross_attn_weights.append(cross_attn_weights)
+        return x, all_self_attn_weights, all_cross_attn_weights
+        
+
+        
+
+################
+# Decoder test #
+################
+
+B = 2
+T = 5          # target sequence length
+S = 7          # source sequence length
+d_model = 8
+num_heads = 2
+d_ff = 32
+num_layers = 3
+
+x = torch.randn(B, T, d_model)
+encoder_output = torch.randn(B, S, d_model)
+
+decoder = Decoder(
+    d_model=d_model,
+    num_heads=num_heads,
+    d_ff=d_ff,
+    num_layers=num_layers
+)
+
+output, all_self_attn_weights, all_cross_attn_weights = decoder(
+    x,
+    encoder_output
+)
+
+print("input shape           :", x.shape)
+print("encoder output shape  :", encoder_output.shape)
+print("decoder output shape  :", output.shape)
+
+print("num decoder layers    :", len(all_self_attn_weights))
+
+for i in range(num_layers):
+    print(f"\nLayer {i+1}")
+    print("self attention shape  :", all_self_attn_weights[i].shape)
+    print("cross attention shape :", all_cross_attn_weights[i].shape)
+
+    print(
+        "self attn sum         :",
+        all_self_attn_weights[i].sum(dim=-1)
+    )
+
+    print(
+        "cross attn sum        :",
+        all_cross_attn_weights[i].sum(dim=-1)
+    )
+
+
+
+
+
+
+
+
+
+
+
 
 
 
