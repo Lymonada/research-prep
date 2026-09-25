@@ -57,13 +57,17 @@ class PositionalEncoding(nn.Module):
 
 
 # 3. Attention
-def attention(Q, K, V): # Expected Q/K/V shape: [B, h, T, d_head]
+def attention(Q, K, V, mask=None): # Expected shapes: Q/K/V : [B, h, T, d_head], mask: [1, 1, T_q, T_k]
     d_k = Q.shape[-1]
     K_trans = torch.transpose(K, -2, -1)
     att_scores = Q @ K_trans / math.sqrt(d_k)
+    # 만약 mask가 있다면, pytorch의 masked_fill은 mask값이 true인 위치를 바꾸기 때문에,
+    # ~mask으로 false, true를 뒤집고 기존에 false였던 부분을 -inf로 채우기(현재 코드에선 true가 허용, false가 차단 인 방식으로 mask를 만들었기 때문)
+    # 중요한 부분은, 이 mask가 causal인지 padding인지 알 필요없이 false인 위치를 막음. 그래서 구현이 간단해짐.
+    if mask is not None: att_scores = att_scores.masked_fill(~mask, float("-inf")) 
     att_weights = F.softmax(att_scores, dim = -1)
-    output = att_weigh0ts @ V
-    return output, att_weights # output: [B, h, T_q, d_k], att_weights: [B, h, T_q, T_k]
+    output = att_weights @ V
+    return output, att_weights # output: [B, h, T_q, d_v], att_weights: [B, h, T_q, T_k]
 
 # 4. Multi-Head Attention
 class MultiHeadAttention(nn.Module):
@@ -212,8 +216,44 @@ class Decoder(nn.Module):
             all_cross_attn_weights.append(cross_attn_weights)
         return x, all_self_attn_weights, all_cross_attn_weights
         
+# 11. Masks
+def create_causal_mask(seq_len): # masked self attention을 위한 mask. 미래의 토큰을 attend할수 없게 만듦.
+    mask = torch.tril(torch.ones(seq_len, seq_len)) # [T, T] shape의 lower-triangular matrix 만듦 
+    mask = mask.unsqueeze(dim=0)
+    mask = mask.unsqueeze(dim=0).bool() # 앞 쪽에 두 차원을 추가해서 나중에 [B, h, T, T] shape을 가진 attention score와 계산될 예정.
+    return mask
 
-        
+def create_padding_mask(seq, pad_idx): # 텐서 하나와 PAD token의 정수 id를 받음. seq: [B, T_k]
+    mask = seq != pad_idx 
+    mask = mask.unsqueeze(1).unsqueeze(2) # mask: [B, 1, 1, T_k]
+    return mask # 이렇게 함으로써 각 배치에서 모든 head에서 모든 query가 특정 key를 못보게 만듦.
+
+def create_decoder_mask(target_seq, pad_idx):# 텐서 하나와 PAD token의 정수 id를 받음. target_seq: [B, T_k]
+    seq_len = target_seq.shape[1] # target_seq: [B, T] 에서 T 가져오기
+    causal_mask = create_causal_mask(seq_len)
+    padding_mask = create_padding_mask(target_seq, pad_idx)
+    combined_mask = causal_mask & padding_mask
+    return combined_mask
+
+
+#####################
+# Mask Test #
+#####################
+
+target_seq = torch.tensor([
+    [1, 5, 8, 9, 2],  # PAD 없음
+    [1, 7, 3, 0, 0]   # 마지막 두 개가 PAD
+])
+
+mask = create_decoder_mask(target_seq, pad_idx=0)
+
+print(mask.shape)
+print("Sequence 0:")
+print(mask[0, 0])
+
+print("\nSequence 1:")
+print(mask[1, 0])
+
 
 ################
 # Decoder test #
@@ -262,18 +302,6 @@ for i in range(num_layers):
         "cross attn sum        :",
         all_cross_attn_weights[i].sum(dim=-1)
     )
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #####################
