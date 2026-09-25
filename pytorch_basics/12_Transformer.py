@@ -51,13 +51,18 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:, :x.size(1), :]
         return x
 
+
+
+
+
+
 # 3. Attention
 def attention(Q, K, V): # Expected Q/K/V shape: [B, h, T, d_head]
     d_k = Q.shape[-1]
     K_trans = torch.transpose(K, -2, -1)
     att_scores = Q @ K_trans / math.sqrt(d_k)
     att_weights = F.softmax(att_scores, dim = -1)
-    output = att_weights @ V
+    output = att_weigh0ts @ V
     return output, att_weights # output: [B, h, T_q, d_k], att_weights: [B, h, T_q, T_k]
 
 # 4. Multi-Head Attention
@@ -166,6 +171,7 @@ class Encoder(nn.Module):
 
 
 
+
 # 9. Decoder Block 
 class DecoderBlock(nn.Module):
     def __init__(self, d_model, num_heads, d_ff):
@@ -185,9 +191,39 @@ class DecoderBlock(nn.Module):
         residual_ln2 = self.add_norm2(residual_ln1, cross_attn_output)
         ffn_output = self.ffn(residual_ln2)
         residual_ln3 = self.add_norm3(residual_ln2, ffn_output)
+        # self_attn_weights: [B,h, T, T] , cross_atnn_weights: [B, H, T, S]
         return residual_ln3, self_attn_weights, cross_attn_weights
 
 
+
+
+#####################
+# DecoderBlock test #
+#####################
+
+B = 2
+T = 5          # target length
+S = 7          # source length
+d_model = 8
+num_heads = 2
+d_ff = 32
+
+decoder_block = DecoderBlock(d_model, num_heads, d_ff)
+
+x = torch.randn(B, T, d_model)
+encoder_output = torch.randn(B, S, d_model)
+
+output, self_attn_weights, cross_attn_weights = decoder_block(
+    x,
+    encoder_output
+)
+
+print("output:", output.shape)
+print("self attention:", self_attn_weights.shape)
+print("cross attention:", cross_attn_weights.shape)
+
+print("self attn sum:", self_attn_weights.sum(dim=-1))
+print("cross attn sum:", cross_attn_weights.sum(dim=-1))
 
 
 
@@ -199,14 +235,14 @@ class DecoderBlock(nn.Module):
 ################
 
 B = 2
-T = 5
+S = 5          # source sequence length
 d_model = 8
 num_heads = 2
 d_ff = 32
 num_layers = 3
 0
 # [B, T, d_model]
-x = torch.randn(B, T, d_model)
+x = torch.randn(B, S, d_model)
 
 encoder = Encoder(
     d_model=d_model,
@@ -233,12 +269,12 @@ for i, attn_weights in enumerate(all_attn_weights):
 #####################
 
 B = 2
-T = 5
+S = 5          # source sequence length
 d_model = 8
 num_heads = 2
 d_ff = 32
 
-x = torch.randn(B, T, d_model)
+x = torch.randn(B, S, d_model)
 
 encoder_block = EncoderBlock(
     d_model=d_model,
