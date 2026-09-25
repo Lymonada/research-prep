@@ -247,7 +247,9 @@ def create_decoder_mask(target_seq, pad_idx):# 텐서 하나와 PAD token의 정
 # source padding mask
 # [B, 1, 1, S]
 
-
+# Encoder Self: 모든 query가 source의 PAD key를 못 봄
+# Decoder Self: 모든 query가 target의 PAD key를 못 보고, 동시에 미래 key도 못 봄
+# Decoder Cross: decoder query들이 encoder/source의 PAD key를 못 봄
 
 
 
