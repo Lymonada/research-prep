@@ -225,15 +225,31 @@ def create_causal_mask(seq_len): # masked self attention을 위한 mask. 미래�
 
 def create_padding_mask(seq, pad_idx): # 텐서 하나와 PAD token의 정수 id를 받음. seq: [B, T_k]
     mask = seq != pad_idx 
-    mask = mask.unsqueeze(1).unsqueeze(2) # mask: [B, 1, 1, T_k]
+    mask = mask.unsqueeze(1).unsqueeze(2) # mask: [B, 1, 1, T_k] -> # head dimension과 query dimension에 broadcasting되도록 함.
     return mask # 이렇게 함으로써 각 배치에서 모든 head에서 모든 query가 특정 key를 못보게 만듦.
 
 def create_decoder_mask(target_seq, pad_idx):# 텐서 하나와 PAD token의 정수 id를 받음. target_seq: [B, T]
     seq_len = target_seq.shape[1] # target_seq: [B, T] 에서 T 가져오기
-    causal_mask = create_causal_mask(seq_len) # causal mask: [1, 1, T, T]
+    causal_mask = create_causal_mask(seq_len) # causal mask: [1, 1, T_q, T_k] = [1, 1, T, T]
     padding_mask = create_padding_mask(target_seq, pad_idx) # paddin mask: [B, 1, 1, T_k]
     combined_mask = causal_mask & padding_mask # combined mask: [B, 1, T, T_k]
     return combined_mask 
+
+# Encoder Self:
+# source padding mask <_
+# [B, 1, 1, S]
+
+# Decoder Self:
+# target padding mask + causal mask -> combined mask
+# [B, 1, T, T]
+
+# Decoder Cross:
+# source padding mask
+# [B, 1, 1, S]
+
+
+
+
 
 
 #####################
