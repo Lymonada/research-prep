@@ -218,9 +218,9 @@ class Decoder(nn.Module):
         
 # 11. Masks
 def create_causal_mask(seq_len): # masked self attention을 위한 mask. 미래의 토큰을 attend할수 없게 만듦.
-    mask = torch.tril(torch.ones(seq_len, seq_len)) # [T, T] shape의 lower-triangular matrix 만듦 
+    mask = torch.tril(torch.ones(seq_len, seq_len)) # [T_q, T_k] shape의 lower-triangular matrix 만듦. T_q, T_k 둘다 target sequence에서 나와서 그냥 [T, T]와 동일
     mask = mask.unsqueeze(dim=0)
-    mask = mask.unsqueeze(dim=0).bool() # 앞 쪽에 두 차원을 추가해서 나중에 [B, h, T, T] shape을 가진 attention score와 계산될 예정.
+    mask = mask.unsqueeze(dim=0).bool() # 앞 쪽에 두 차원을 추가해서 나중에 [B, h, T_q, T_k] shape을 가진 attention score와 계산될 예정.
     return mask
 
 def create_padding_mask(seq, pad_idx): # 텐서 하나와 PAD token의 정수 id를 받음. seq: [B, T_k]
@@ -228,12 +228,12 @@ def create_padding_mask(seq, pad_idx): # 텐서 하나와 PAD token의 정수 id
     mask = mask.unsqueeze(1).unsqueeze(2) # mask: [B, 1, 1, T_k]
     return mask # 이렇게 함으로써 각 배치에서 모든 head에서 모든 query가 특정 key를 못보게 만듦.
 
-def create_decoder_mask(target_seq, pad_idx):# 텐서 하나와 PAD token의 정수 id를 받음. target_seq: [B, T_k]
+def create_decoder_mask(target_seq, pad_idx):# 텐서 하나와 PAD token의 정수 id를 받음. target_seq: [B, T]
     seq_len = target_seq.shape[1] # target_seq: [B, T] 에서 T 가져오기
-    causal_mask = create_causal_mask(seq_len)
-    padding_mask = create_padding_mask(target_seq, pad_idx)
-    combined_mask = causal_mask & padding_mask
-    return combined_mask
+    causal_mask = create_causal_mask(seq_len) # causal mask: [1, 1, T, T]
+    padding_mask = create_padding_mask(target_seq, pad_idx) # paddin mask: [B, 1, 1, T_k]
+    combined_mask = causal_mask & padding_mask # combined mask: [B, 1, T, T_k]
+    return combined_mask 
 
 
 #####################
