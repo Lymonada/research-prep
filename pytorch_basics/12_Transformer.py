@@ -57,7 +57,9 @@ class PositionalEncoding(nn.Module):
 
 
 # 3. Attention
-def attention(Q, K, V, mask=None): # Expected shapes: Q/K/V : [B, h, T, d_head], mask: [1, 1, T_q, T_k]
+def attention(Q, K, V, mask=None): 
+    # Expected shapes: Q/K/V : [B, h, T, d_head], mask: attention score [B,h,T_q,T_k]에 broadcast 가능한 bool tensor
+    # ex) Causal mask: [1, 1, T_q, T_k] , Padding mask: [B, 1, 1, T_k]
     d_k = Q.shape[-1]
     K_trans = torch.transpose(K, -2, -1)
     att_scores = Q @ K_trans / math.sqrt(d_k)
@@ -83,7 +85,7 @@ class MultiHeadAttention(nn.Module):
         self.W_V = nn.Linear(d_model, d_model)
         self.W_O = nn.Linear(d_model, d_model)
     
-    def forward(self, query, key, value): # Expected query, key, value shape: [B, T, d_model]
+    def forward(self, query, key, value, mask=None): # Expected query, key, value shape: [B, T, d_model]
         Q = self.W_Q(query)
         K = self.W_K(key)
         V = self.W_V(value)
@@ -99,8 +101,8 @@ class MultiHeadAttention(nn.Module):
         V = V.unflatten(-1, (self.num_heads, self.d_head))
         V = torch.transpose(V, 1, 2)
 
-        # attention에서 나온 output을 다시 원래 shape으로 돌려놓기 head_output [B,h,T_q,d_head] -> [B, T, d_model]
-        output, att_weights = attention(Q,K,V)
+        output, att_weights = attention(Q, K, V, mask)
+        # attention에서 나온 output을 다시 원래 shape으로 돌려놓기 head_output [B, h, T_q, d_head] -> [B, T_q, d_model]
         output = torch.transpose(output, 1, 2)
         output = output.flatten(-2) # 숫자하나만 적으면 맨끝에 -1이 default값으로 들어가있어서 (-2,-1) 이렇게 처리됨. 즉 그 두개를 합침.
 
@@ -139,6 +141,7 @@ class ResidualLayerNorm(nn.Module):
 
 
 
+
 # 7. Encoder Block
 ## 하나의 encoder block이 어떻게 작동해야하는지 
 class EncoderBlock(nn.Module):
@@ -149,8 +152,8 @@ class EncoderBlock(nn.Module):
         self.add_norm1 = ResidualLayerNorm(d_model)
         self.ffn = FFN(d_model, d_ff)
         self.add_norm2 = ResidualLayerNorm(d_model)
-    def forward(self, x):
-        attn_output, attn_weights = self.mha(x,x,x) # multihead attention에서 새로운 representation과 attetion weight matrix 받기
+    def forward(self, x, src_mask=None):
+        attn_output, attn_weights = self.mha(x,x,x, mask=src_mask) # multihead attention에서 새로운 representation과 attetion weight matrix 받기
         residual_ln1 = self.add_norm1(x, attn_output) # 첫번쨰 add+norm 통과
         ffn_output = self.ffn(residual_ln1) # FFN층 통과
         residual_ln2 = self.add_norm2(residual_ln1, ffn_output) # 두번째 add+norm 통과
@@ -165,10 +168,10 @@ class Encoder(nn.Module):
             EncoderBlock(d_model, num_heads, d_ff) for i in range(num_layers)
             )
     
-    def forward(self, x): # x(encoder input) shape: [B, S, d_model]
+    def forward(self, x, src_mask=None): # x(encoder input) shape: [B, S, d_model]
         all_attn_weights = []
         for layer in self.layers:
-            x, attn_weights = layer(x)
+            x, attn_weights = layer(x, src_mask=src_mask)
             all_attn_weights.append(attn_weights)
         return x, all_attn_weights
         
@@ -237,7 +240,7 @@ def create_padding_mask(seq, pad_idx): # 현재 K/V를 제공하는 sequence의 
     # 왜냐면 모든 head의 모든 query에서 PAD key를 참고하지 못하게 해야해서.
 
     return mask # 따라서 각 batch에서 모든 head와 모든 query가 PAD key를 보지 못함.
-    
+
 def create_decoder_mask(target_seq, pad_idx):# target_seq: [B, T]
     # Decoder self-attention용 causal mask + target padding mask 생성.
     seq_len = target_seq.shape[1] 
