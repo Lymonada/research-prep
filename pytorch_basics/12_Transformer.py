@@ -278,6 +278,8 @@ class Transformer(nn.Module):
         self.decoder = Decoder(d_model, num_heads, d_ff, num_layers)
 
         self.pad_idx = pad_idx
+
+        self.output_linear = nn.Linear(d_model, tgt_vocab_size)
     
     def forward(self, src, tgt): # source sequence: [B, S] , target sequence: [B, T]
         src_x = self.src_token_embedding(src)
@@ -286,7 +288,7 @@ class Transformer(nn.Module):
         src_mask = create_padding_mask(seq=src, pad_idx=self.pad_idx) # src_mask는 padding mask만
         # padding mask를 만들때는 embedding하기전의 src sequence를 가져와야지 token id를 보고 pad인지 확인할 수 있음.
         encoder_output, encoder_attn_weights = self.encoder(src_x, src_mask)
-
+        # encoder_output: [B,S,d_model], encoder_attn_weights: list of num_layers, each element: [B,h,S,S]
         tgt_x = self.tgt_token_embedding(tgt)
         tgt_x = self.tgt_positional_encoding(tgt_x)
 
@@ -294,12 +296,74 @@ class Transformer(nn.Module):
         # padding mask를 만들때는 embedding하기전의 src sequence를 가져와야지 token id를 보고 pad인지 확인할 수 있음.
 
         decoder_output, decoder_self_attn_weights, decoder_cross_attn_weights = self.decoder(tgt_x, encoder_output, tgt_mask, src_mask)
+        # decoder_output: [B,T,d_model], decoder_self_attn_weights: list of num_layers, each [B,h,T,T], decoder_cross_attn_weights: list of num_layers, each [B,h,T,S]
+        vocab_logits = self.output_linear(decoder_output)
+        # vocab_logits: [B,T,tgt_vocab_size]
+
         return (
-                decoder_output,
+                vocab_logits,
                 encoder_attn_weights,
                 decoder_self_attn_weights,
                 decoder_cross_attn_weights
                 )
+
+###########################
+# Transformer Logits Test #
+###########################
+
+B = 2
+S = 7
+T = 5
+
+src_vocab_size = 20
+tgt_vocab_size = 30
+
+d_model = 8
+num_heads = 2
+d_ff = 32
+num_layers = 3
+max_len = 20
+pad_idx = 0
+
+src = torch.tensor([
+    [1, 4, 7, 3, 0, 0, 0],
+    [2, 5, 8, 9, 3, 4, 0]
+])
+
+tgt = torch.tensor([
+    [1, 6, 4, 0, 0],
+    [1, 3, 7, 8, 0]
+])
+
+dummy = torch.tensor([
+    [4, 7, 9, 0, 0],
+    [3, 8, 2, 5, 0]
+])
+
+my_model = Transformer(src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, max_len, pad_idx)
+
+vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = my_model(src, tgt)
+criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
+
+logits = vocab_logits.reshape(-1, vocab_logits.size(-1))
+flattened_dummy = dummy.reshape(-1)
+
+loss = criterion(logits, flattened_dummy)
+
+print("Logits Shape: ")
+print(vocab_logits.shape)
+
+print("Labels Shape:")
+print(dummy.shape)
+
+print("Flattened Logits Shape: ")
+print(logits.shape)
+
+print("Flattened Labels Shape:")
+print(flattened_dummy.shape)
+
+print("Loss: ")
+print(loss)
 
 ####################
 # Transformer Test #
