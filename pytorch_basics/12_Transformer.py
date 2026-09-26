@@ -264,12 +264,89 @@ def create_decoder_mask(target_seq, pad_idx):# target_seq: [B, T]
     return combined_mask 
 
 
+# 12. Transformer
+class Transformer(nn.Module):
+    def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, max_len, pad_idx):
+        super().__init__()
+        self.src_token_embedding = TokenEmbedding(src_vocab_size, d_model)
+        self.tgt_token_embedding = TokenEmbedding(tgt_vocab_size, d_model)
 
+        self.src_positional_encoding = PositionalEncoding(d_model, max_len)
+        self.tgt_positional_encoding = PositionalEncoding(d_model, max_len)
 
+        self.encoder = Encoder(d_model, num_heads, d_ff, num_layers)
+        self.decoder = Decoder(d_model, num_heads, d_ff, num_layers)
 
+        self.pad_idx = pad_idx
+    
+    def forward(self, src, tgt): # source sequence: [B, S] , target sequence: [B, T]
+        src_x = self.src_token_embedding(src)
+        src_x = self.src_positional_encoding(src_x)
 
+        src_mask = create_padding_mask(seq=src, pad_idx=self.pad_idx) # src_mask는 padding mask만
+        # padding mask를 만들때는 embedding하기전의 src sequence를 가져와야지 token id를 보고 pad인지 확인할 수 있음.
+        encoder_output, encoder_attn_weights = self.encoder(src_x, src_mask)
 
+        tgt_x = self.tgt_token_embedding(tgt)
+        tgt_x = self.tgt_positional_encoding(tgt_x)
 
+        tgt_mask = create_decoder_mask(target_seq=tgt, pad_idx=self.pad_idx) # tgt_mask는 causal mask+padding mask
+        # padding mask를 만들때는 embedding하기전의 src sequence를 가져와야지 token id를 보고 pad인지 확인할 수 있음.
+
+        decoder_output, decoder_self_attn_weights, decoder_cross_attn_weights = self.decoder(tgt_x, encoder_output, tgt_mask, src_mask)
+        return (
+                decoder_output,
+                encoder_attn_weights,
+                decoder_self_attn_weights,
+                decoder_cross_attn_weights
+                )
+
+####################
+# Transformer Test #
+####################
+
+B = 2
+S = 7
+T = 5
+
+src_vocab_size = 20
+tgt_vocab_size = 30
+
+d_model = 8
+num_heads = 2
+d_ff = 32
+num_layers = 3
+max_len = 20
+pad_idx = 0
+
+src = torch.tensor([
+    [1, 4, 7, 3, 0, 0, 0],
+    [2, 5, 8, 9, 3, 4, 0]
+])
+
+tgt = torch.tensor([
+    [1, 6, 4, 0, 0],
+    [1, 3, 7, 8, 0]
+])
+
+my_model = Transformer(src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, max_len, pad_idx)
+
+decoder_output,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = my_model(src, tgt)
+
+print("Decoder output shape:")
+print(decoder_output.shape)
+
+print(len(encoder_attn_weights))
+for i, weights in enumerate(encoder_attn_weights):
+    print(f"Layer {i}: {weights.shape}")
+
+print(len(decoder_self_attn_weights))
+for i, weights in enumerate(decoder_self_attn_weights):
+    print(f"Layer {i}: {weights.shape}")
+
+print(len(decoder_cross_attn_weights))
+for i, weights in enumerate(decoder_cross_attn_weights):
+    print(f"Layer {i}: {weights.shape}")
 
 
 
