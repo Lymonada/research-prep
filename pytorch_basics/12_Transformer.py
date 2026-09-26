@@ -186,16 +186,20 @@ class DecoderBlock(nn.Module):
 
         self.self_attn = MultiHeadAttention(d_model, num_heads)
         self.add_norm1 = ResidualLayerNorm(d_model)
+
         self.cross_attn = MultiHeadAttention(d_model, num_heads)
         self.add_norm2 = ResidualLayerNorm(d_model)
+
         self.ffn = FFN(d_model, d_ff)
         self.add_norm3 = ResidualLayerNorm(d_model)
 
     def forward(self, x, encoder_output, self_mask=None ,cross_mask=None): # x(decoder input) shape: [B, T, d_model] , encoder_output shape: [B, S, d_model]
-        self_attn_output, self_attn_weights = self.self_attn(x, x, x) # q/k/v 모두 decoder input을 가져와서 projection
+        self_attn_output, self_attn_weights = self.self_attn(x, x, x, mask=self_mask) # q/k/v 모두 decoder input을 가져와서 projection
         residual_ln1 = self.add_norm1(x, self_attn_output)
-        cross_attn_output, cross_attn_weights = self.cross_attn(residual_ln1, encoder_output, encoder_output) # cross attention은 k/v를 encoder outputd에서 가져와서 projection
+
+        cross_attn_output, cross_attn_weights = self.cross_attn(residual_ln1, encoder_output, encoder_output, mask=cross_mask) # cross attention은 k/v를 encoder outputd에서 가져와서 projection
         residual_ln2 = self.add_norm2(residual_ln1, cross_attn_output)
+        
         ffn_output = self.ffn(residual_ln2)
         residual_ln3 = self.add_norm3(residual_ln2, ffn_output)
         # self_attn_weights: [B,h, T, T] , cross_atnn_weights: [B, H, T, S]
@@ -214,10 +218,14 @@ class Decoder(nn.Module):
         all_self_attn_weights =[]
         all_cross_attn_weights =[]
         for layer in self.layers:
-            x, self_attn_weights, cross_attn_weights = layer(x, encoder_output)
+            x, self_attn_weights, cross_attn_weights = layer(x, encoder_output, self_mask=self_mask, cross_mask=cross_mask)
             all_self_attn_weights.append(self_attn_weights)
             all_cross_attn_weights.append(cross_attn_weights)
         return x, all_self_attn_weights, all_cross_attn_weights
+
+
+
+
         
 # 11. Masks
 def create_causal_mask(seq_len): # Decoder self-attention에서 미래 target token을 attend하지 못하게 함.
@@ -254,6 +262,142 @@ def create_decoder_mask(target_seq, pad_idx):# target_seq: [B, T]
 
     combined_mask = causal_mask & padding_mask # combined mask: [B, 1, T, T_k]
     return combined_mask 
+
+
+
+
+
+
+
+
+
+
+
+#####################
+# Decoder Mask Test #
+#####################
+
+B = 2
+T = 5
+S = 6
+d_model = 8
+num_heads = 2
+d_ff = 32
+num_layers = 3
+pad_idx = 0
+
+# decoder input representation
+x = torch.randn(B, T, d_model)
+
+# encoder output
+encoder_output = torch.randn(B, S, d_model)
+
+# target token ids
+target_seq = torch.tensor([
+    [1, 5, 8, 9, 2],     # PAD 없음
+    [1, 7, 3, 0, 0]      # 마지막 두 개가 PAD
+])
+
+# source token ids
+src_seq = torch.tensor([
+    [4, 6, 8, 2, 9, 3],  # PAD 없음
+    [5, 7, 2, 1, 0, 0]   # 마지막 두 개가 PAD
+])
+
+# Decoder Self-Attention용:
+# causal + target padding
+self_mask = create_decoder_mask(target_seq, pad_idx)
+
+# Decoder Cross-Attention용:
+# source padding
+cross_mask = create_padding_mask(src_seq, pad_idx)
+
+decoder = Decoder(
+    d_model=d_model,
+    num_heads=num_heads,
+    d_ff=d_ff,
+    num_layers=num_layers
+)
+
+output, all_self_attn_weights, all_cross_attn_weights = decoder(
+    x,
+    encoder_output,
+    self_mask=self_mask,
+    cross_mask=cross_mask
+)
+
+print("Decoder output shape:")
+print(output.shape)
+
+print("\nNumber of decoder layers:")
+print(len(all_self_attn_weights))
+print(len(all_cross_attn_weights))
+
+for i in range(num_layers):
+    print(f"\nLayer {i}")
+    print("Self-attention shape:",
+          all_self_attn_weights[i].shape)
+    print("Cross-attention shape:",
+          all_cross_attn_weights[i].shape)
+
+print("\nLast layer - sequence 1 - head 0 - SELF attention:")
+print(all_self_attn_weights[-1][1, 0])
+
+print("\nLast layer - sequence 1 - head 0 - CROSS attention:")
+print(all_cross_attn_weights[-1][1, 0])
+
+
+
+
+
+
+
+
+
+
+#####################
+# Encoder Mask Test #
+#####################
+
+B = 2
+S = 5
+d_model = 8
+num_heads = 2
+d_ff = 32
+num_layers = 3
+
+x = torch.randn(B, S, d_model)
+
+src_seq = torch.tensor([
+    [5, 8, 2, 9, 4],
+    [7, 3, 6, 0, 0]
+])
+
+src_mask = create_padding_mask(src_seq, pad_idx=0)
+
+encoder = Encoder(
+    d_model=d_model,
+    num_heads=num_heads,
+    d_ff=d_ff,
+    num_layers=num_layers
+)
+
+output, all_attn_weights = encoder(
+    x,
+    src_mask=src_mask
+)
+
+print(output.shape)
+print(len(all_attn_weights))
+
+for i, weights in enumerate(all_attn_weights):
+    print(f"Layer {i}: {weights.shape}")
+
+print("\nLast layer, sequence 1, head 0:")
+print(all_attn_weights[-1][1, 0])
+
+
+
 
 
 # Encoder Self:
