@@ -341,15 +341,15 @@ loss_function = nn.CrossEntropyLoss()
 
 for step in range(num_steps):
 
-    src, tgt_input, tgt_label = generate_copy_batch(batch_size, seq_len, vocab_size, bos_idx, eos_idx, device)
+    train_src, train_tgt_input, train_tgt_label = generate_copy_batch(batch_size, seq_len, vocab_size, bos_idx, eos_idx, device)
 
     optimizer.zero_grad()
 
-    vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = model(src, tgt_input)
+    vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = model(train_src, train_tgt_input)
 
 
     logits = vocab_logits.reshape(-1, vocab_logits.size(-1))
-    label = tgt_label.reshape(-1)
+    label = train_tgt_label.reshape(-1)
 
     loss = loss_function(logits, label)
 
@@ -360,7 +360,7 @@ for step in range(num_steps):
         print("Loss: ")
         print(loss)
 
-        
+
 # 15. Training-time prediction test
 test_batch_size = 1
 model.eval()
@@ -376,6 +376,79 @@ print(tgt_input)
 print(tgt_label)
 print(prediction)
 print(torch.equal(prediction, tgt_label))
+
+
+#16. Autoregressive Inference
+@torch.no_grad()
+def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device): # src: [B,S]
+    model.eval()
+    batch_size = src.shape[0]
+
+    # [B, 1] 크기로 bos_idx 채우기
+    generated = torch.full((batch_size, 1), bos_idx, dtype=torch.long, device=device)
+    # model에 넣어줄 target sequence로 [BOS]만 있는 텐서 넣기
+
+    # 최대 max_new_tokens개의 새로운 token을 autoregressive하게 생성
+    for tokens in range(max_new_tokens):
+        vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = model(src, generated)
+        next_token_logits = vocab_logits[:,-1,:] # next_token_logits: [B, vocab_size]
+        # vocab_logits에는 모든 timestep의 다음 토큰 예상값이 logits으로 들어있기 때문에
+        # 마지막 시점의, 즉 마지막 position의 예상값을 가져오기 위해 T차원을 -1로 가져옴.
+
+        next_token = next_token_logits.argmax(dim=-1) # next_token_logits에서 가장 큰 값의 인덱스는 모델이 예상한 다음 token id. next_token: [B]
+        next_token = next_token.unsqueeze(-1) # 제일 안쪽 차원을 하나 추가. next_token: [B, 1]
+        generated = torch.cat([generated, next_token], dim=1) # generated와 next_token을 붙임. generated: [B, current_length+1]
+
+        if next_token.item() == eos_idx: # [EOS]를 생성했으면 문장이 끝났기 때문에 break. next_token이 값을 딱 하나만 가지기 때문에 .item()으로 꺼낼 수 있음
+            break # 만약 batch_size가 1이 아니라서 next_token에 여러 값이 있다면 작동X
+    
+    return generated # generated: [B,T]
+
+
+max_new_tokens = src.shape[1] + 1
+result = greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device)
+
+
+
+
+
+# 17. Teacher-forcing vs Autoregressive Inference Test
+
+# 새로운 테스트용 copy sample 1개 생성
+test_src, test_tgt_input, test_tgt_label = generate_copy_batch(
+    batch_size=1,
+    seq_len=seq_len,
+    vocab_size=vocab_size,
+    bos_idx=bos_idx,
+    eos_idx=eos_idx,
+    device=device
+)
+
+# 1) Teacher-forcing prediction
+model.eval()
+
+with torch.no_grad():
+    vocab_logits, _, _, _ = model(test_src, test_tgt_input)
+    teacher_prediction = vocab_logits.argmax(dim=-1)
+
+# 2) Autoregressive prediction
+max_new_tokens = src.shape[1] + 1
+
+generated = greedy_decode(
+    model,
+    test_src,
+    bos_idx,
+    eos_idx,
+    max_new_tokens,
+    device
+)
+
+print("src:                 ", test_src)
+print("tgt_input:           ", test_tgt_input)
+print("tgt_label:           ", test_tgt_label)
+print("teacher prediction:  ", teacher_prediction)
+print("autoregressive:      ", generated)
+
 
 
 
