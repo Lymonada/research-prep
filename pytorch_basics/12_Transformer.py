@@ -405,10 +405,6 @@ def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device): # src: 
     return generated # generated: [B,T]
 
 
-max_new_tokens = src.shape[1] + 1
-result = greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device)
-
-
 
 
 
@@ -432,7 +428,7 @@ with torch.no_grad():
     teacher_prediction = vocab_logits.argmax(dim=-1)
 
 # 2) Autoregressive prediction
-max_new_tokens = src.shape[1] + 1
+max_new_tokens = test_src.shape[1] + 1
 
 generated = greedy_decode(
     model,
