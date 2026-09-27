@@ -14,7 +14,7 @@ class TokenEmbedding(nn.Module):
             num_embeddings = vocab_size,
             embedding_dim = d_model
             )
-        
+
     def forward(self, x):
         x = self.embedding(x)
         x = x * math.sqrt(self.d_model)
@@ -226,12 +226,13 @@ class Decoder(nn.Module):
 
 
 
+
         
 # 11. Masks
-def create_causal_mask(seq_len): # Decoder self-attention에서 미래 target token을 attend하지 못하게 함.
+def create_causal_mask(seq_len, device): # Decoder self-attention에서 미래 target token을 attend하지 못하게 함.
     # seq_len = target sequence length T.
 
-    mask = torch.tril(torch.ones(seq_len, seq_len))
+    mask = torch.tril(torch.ones(seq_len, seq_len, device=device))
     # Decoder self-attention에서는 T_q = T_k = T이므로 [T_q, T_k] = [T, T] lower-triangular mask를 만듦.
 
     mask = mask.unsqueeze(dim=0)
@@ -253,8 +254,8 @@ def create_decoder_mask(target_seq, pad_idx):# target_seq: [B, T]
     # Decoder self-attention용 causal mask + target padding mask 생성.
     seq_len = target_seq.shape[1] 
     # target_seq: [B, T] 에서 T 가져오기
-
-    causal_mask = create_causal_mask(seq_len) 
+    current_device = target_seq.device
+    causal_mask = create_causal_mask(seq_len, current_device) 
     # causal mask: [1, 1, T_q, T_k] = [1, 1, T, T]
 
     padding_mask = create_padding_mask(target_seq, pad_idx) 
@@ -266,7 +267,7 @@ def create_decoder_mask(target_seq, pad_idx):# target_seq: [B, T]
 
 # 12. Transformer
 class Transformer(nn.Module):
-    def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, max_len, pad_idx):
+    def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, pad_idx, max_len=5000):
         super().__init__()
         self.src_token_embedding = TokenEmbedding(src_vocab_size, d_model)
         self.tgt_token_embedding = TokenEmbedding(tgt_vocab_size, d_model)
@@ -307,6 +308,122 @@ class Transformer(nn.Module):
                 decoder_cross_attn_weights
                 )
 
+# 13. Copy Task
+def generate_copy_batch(batch_size, seq_len, vocab_size, bos_idx, eos_idx, device): # 
+    src = torch.randint(3, vocab_size, (batch_size, seq_len), device=device)
+    tgt_input = F.pad(src, (1,0), value=bos_idx) # (1,0)을 하면 앞에 하나 추가
+    tgt_label = F.pad(src, (0,1), value=eos_idx) # (0,1)을 하면 뒤에 하나 추가
+    return src, tgt_input, tgt_label # src: [B, S], tgt_input: [B, S+1], tgt_label: [B, S+1]
+
+
+# 14. Training Loop
+vocab_size = 20
+pad_idx = 0
+bos_idx = 1
+eos_idx = 2
+
+seq_len = 5
+batch_size = 32
+
+d_model = 32
+num_heads = 4
+d_ff = 64
+num_layers = 2
+
+learning_rate = 1e-3
+num_steps = 1000
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+model = Transformer(vocab_size, vocab_size, d_model, num_heads, d_ff, num_layers, pad_idx).to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+loss_function = nn.CrossEntropyLoss()
+
+for step in range(num_steps):
+
+    src, tgt_input, tgt_label = generate_copy_batch(batch_size, seq_len, vocab_size, bos_idx, eos_idx, device)
+
+    optimizer.zero_grad()
+
+    vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = model(src, tgt_input)
+
+
+    logits = vocab_logits.reshape(-1, vocab_logits.size(-1))
+    label = tgt_label.reshape(-1)
+
+    loss = loss_function(logits, label)
+
+    loss.backward()
+    optimizer.step()
+
+
+    if step % 100 == 0:
+        print("Loss: ")
+        print(loss)
+
+
+
+############################
+# generate_copy_batch() Test
+############################
+
+batch_size = 2
+seq_len = 5
+vocab_size = 20
+
+bos_idx = 1
+eos_idx = 2
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+src, tgt_input, tgt_label = generate_copy_batch(
+    batch_size=batch_size,
+    seq_len=seq_len,
+    vocab_size=vocab_size,
+    bos_idx=bos_idx,
+    eos_idx=eos_idx,
+    device=device
+)
+
+print("src:")
+print(src)
+print("shape:", src.shape)
+
+print("\ntgt_input:")
+print(tgt_input)
+print("shape:", tgt_input.shape)
+
+print("\ntgt_label:")
+print(tgt_label)
+print("shape:", tgt_label.shape)
+
+# shape 확인
+assert src.shape == (batch_size, seq_len)
+assert tgt_input.shape == (batch_size, seq_len + 1)
+assert tgt_label.shape == (batch_size, seq_len + 1)
+
+# BOS / EOS 위치 확인
+assert torch.all(tgt_input[:, 0] == bos_idx)
+assert torch.all(tgt_label[:, -1] == eos_idx)
+
+# 실제 copy 관계 확인
+assert torch.equal(tgt_input[:, 1:], src)
+assert torch.equal(tgt_label[:, :-1], src)
+
+print("\nAll tests passed!")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###########################
 # Transformer Logits Test #
 ###########################
@@ -340,7 +457,7 @@ dummy = torch.tensor([
     [3, 8, 2, 5, 0]
 ])
 
-my_model = Transformer(src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, max_len, pad_idx)
+my_model = Transformer(src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, pad_idx, max_len)
 
 vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = my_model(src, tgt)
 criterion = nn.CrossEntropyLoss(ignore_index=pad_idx)
@@ -393,7 +510,7 @@ tgt = torch.tensor([
     [1, 3, 7, 8, 0]
 ])
 
-my_model = Transformer(src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, max_len, pad_idx)
+my_model = Transformer(src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, pad_idx, max_len)
 
 decoder_output,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = my_model(src, tgt)
 
