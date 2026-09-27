@@ -338,6 +338,7 @@ model = Transformer(vocab_size, vocab_size, d_model, num_heads, d_ff, num_layers
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 loss_function = nn.CrossEntropyLoss()
 
+
 for step in range(num_steps):
 
     src, tgt_input, tgt_label = generate_copy_batch(batch_size, seq_len, vocab_size, bos_idx, eos_idx, device)
@@ -355,10 +356,28 @@ for step in range(num_steps):
     loss.backward()
     optimizer.step()
 
-
     if step % 100 == 0:
         print("Loss: ")
         print(loss)
+
+        
+# 15. Training-time prediction test
+test_batch_size = 1
+model.eval()
+# 위에서 학습시킨 모델을 그대로 가져와서 batch_size만 1로 바꾸고 추론.
+with torch.no_grad():
+    src, tgt_input, tgt_label = generate_copy_batch(test_batch_size, seq_len, vocab_size, bos_idx, eos_idx, device)
+    vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = model(src, tgt_input)
+
+    prediction = vocab_logits.argmax(dim=-1)
+
+print(src)
+print(tgt_input)
+print(tgt_label)
+print(prediction)
+print(torch.equal(prediction, tgt_label))
+
+
 
 
 
