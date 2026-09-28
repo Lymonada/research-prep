@@ -323,8 +323,7 @@ pad_idx = 0
 bos_idx = 1
 eos_idx = 2
 
-seq_len = 5
-batch_size = 32
+lengths = [2, 5, 3, 4, 8, 6, 9, 4, 5, 3, 2, 5, 3, 4, 8, 6, 9, 4, 5, 3, 2, 5, 3, 4, 8, 6, 9, 4, 5, 3, 5, 3, 7]
 
 d_model = 32
 num_heads = 4
@@ -341,8 +340,14 @@ loss_function = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
 for step in range(num_steps):
 
-    train_src, train_tgt_input, train_tgt_label = generate_copy_batch(batch_size, seq_len, vocab_size, bos_idx, eos_idx, device)
-
+    train_src, train_tgt_input, train_tgt_label = generate_variable_copy_batch( # train_src: [B,S_max] train_tgt_input,train_tgt_label: [B,T_max]
+    lengths=lengths,
+    vocab_size=vocab_size,
+    bos_idx=bos_idx,
+    eos_idx=eos_idx,
+    pad_idx=pad_idx,
+    device=device
+)
     optimizer.zero_grad()
 
     vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = model(train_src, train_tgt_input)
