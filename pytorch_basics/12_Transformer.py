@@ -380,13 +380,15 @@ print(torch.equal(prediction, tgt_label))
 
 #16. Autoregressive Inference
 @torch.no_grad()
-def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device): # src: [B,S]
+def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device, pad_idx): # src: [B,S]
     model.eval()
     batch_size = src.shape[0]
 
     # [B, 1] 크기로 bos_idx 채우기
     generated = torch.full((batch_size, 1), bos_idx, dtype=torch.long, device=device)
     # model에 넣어줄 target sequence로 [BOS]만 있는 텐서 넣기
+
+    finished = torch.zeros(batch_size, dtype=torch.bool, device=device) # 텐서 하나를 만들어서 batch의 모든 문장이 EOS로 끝났는지 추적
 
     # 최대 max_new_tokens개의 새로운 token을 autoregressive하게 생성
     for tokens in range(max_new_tokens):
@@ -396,16 +398,25 @@ def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device): # src: 
         # 마지막 시점의, 즉 마지막 position의 예상값을 가져오기 위해 T차원을 -1로 가져옴.
 
         next_token = next_token_logits.argmax(dim=-1) # next_token_logits에서 가장 큰 값의 인덱스는 모델이 예상한 다음 token id. next_token: [B]
+        
+        # 이전 step에서 이미 EOS를 생성한 sequence는 이제 PAD만 추가
+        next_token = torch.where(
+            finished,
+            torch.full_like(next_token, pad_idx),
+            next_token
+        )
+
+        # 이번 step에서 새롭게 EOS를 생성한 sequence까지 finished에 기록
+        finished = finished | (next_token == eos_idx)
+        
         next_token = next_token.unsqueeze(-1) # 제일 안쪽 차원을 하나 추가. next_token: [B, 1]
         generated = torch.cat([generated, next_token], dim=1) # generated와 next_token을 붙임. generated: [B, current_length+1]
 
-        if next_token.item() == eos_idx: # [EOS]를 생성했으면 문장이 끝났기 때문에 break. next_token이 값을 딱 하나만 가지기 때문에 .item()으로 꺼낼 수 있음
-            break # 만약 batch_size가 1이 아니라서 next_token에 여러 값이 있다면 작동X
+        if finished.all(): # finished 텐서안의 값이 모두 true면 break
+            break 
     
     return generated # generated: [B,T]
-
-
-
+    
 
 
 # 17. Teacher-forcing vs Autoregressive Inference Test
