@@ -1,10 +1,8 @@
 # 직접 구현한 Transformer — 구조, Tensor Flow, 학습과 추론
 
-작성 기준: 2026-09-28의 `12_Transformer.py`, `Transformer.ipynb`, `pytorch_learning_context.md` 및 구현 검토 결과.
-
 이 문서는 내가 bottom-up으로 구현한 **작은 Post-LN Encoder–Decoder Transformer**를 복원하기 위한 학습 기록이다. 코드에서 실제로 수행하는 연산과 tensor의 의미를 중심으로, 기존 학습 노트의 중복 설명을 통합했다. 코드 수정 사항을 적용했다고 가정하지 않으며, 원본 파일의 미해결 정리 항목은 10절에 따로 기록한다.
 
-**복습 순서:** 전체 연결은 2절 → attention과 mask는 3~5절 → 학습·추론은 6~7절. 시간이 짧으면 마지막 **Final Shape & Forward Flow Cheat Sheet**부터 읽는다.
+**복습 순서:** 전체 연결은 2절 → attention과 mask는 3~7절. 시간이 짧으면 마지막 **Final Shape & Forward Flow Cheat Sheet**부터 읽는다.
 
 ## 1. 구현 범위와 표기
 
