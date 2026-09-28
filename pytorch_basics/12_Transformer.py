@@ -295,7 +295,7 @@ class Transformer(nn.Module):
         tgt_x = self.tgt_positional_encoding(tgt_x)
 
         tgt_mask = create_decoder_mask(target_seq=tgt, pad_idx=self.pad_idx) # tgt_mask는 causal mask+padding mask
-        # padding mask를 만들때는 embedding하기전의 src sequence를 가져와야지 token id를 보고 pad인지 확인할 수 있음.
+        # padding mask를 만들때는 embedding하기전의 tgt sequence를 가져와야지 token id를 보고 pad인지 확인할 수 있음.
 
         decoder_output, decoder_self_attn_weights, decoder_cross_attn_weights = self.decoder(tgt_x, encoder_output, tgt_mask, src_mask)
         # decoder_output: [B,T,d_model], decoder_self_attn_weights: list of num_layers, each [B,h,T,T], decoder_cross_attn_weights: list of num_layers, each [B,h,T,S]
@@ -315,6 +315,52 @@ def generate_copy_batch(batch_size, seq_len, vocab_size, bos_idx, eos_idx, devic
     tgt_input = F.pad(src, (1,0), value=bos_idx) # (1,0)을 하면 앞에 하나 추가
     tgt_label = F.pad(src, (0,1), value=eos_idx) # (0,1)을 하면 뒤에 하나 추가
     return src, tgt_input, tgt_label # src: [B, S], tgt_input: [B, S+1], tgt_label: [B, S+1]
+
+
+
+# 18. generate_variable_copy_batch
+def generate_variable_copy_batch(
+    lengths,
+    vocab_size,
+    bos_idx,
+    eos_idx,
+    pad_idx,
+    device
+):
+
+    src_list = []
+    tgt_input_list = []
+    tgt_label_list = []
+ 
+    for length in lengths: # lengths는 각 sequence의 길이를 알려주는 1차원 배열
+
+        src = torch.randint(3, vocab_size, (length, ), device=device)
+
+        tgt_input = F.pad(src, (1,0), value=bos_idx) # (1,0)을 하면 앞에 하나 추가
+        tgt_label = F.pad(src, (0,1), value=eos_idx) # (0,1)을 하면 뒤에 하나 추가
+
+        src_list.append(src)
+        tgt_input_list.append(tgt_input)
+        tgt_label_list.append(tgt_label)
+        # 각 리스트에 추가
+
+    # src_list를 PAD해서 [B, S_max]
+    src_batch = pad_sequence(src_list, batch_first=True, padding_value=pad_idx) 
+    # batch_first=True로 output을 [B, S_max] 형태로 만들고, 
+    # S_max는 src_list에서 가장 긴 sequence 길이(max(lengths)). 
+    # 짧은 sequence의 오른쪽 부족한 부분은 pad_idx로 채움.
+
+    # tgt_input_list를 PAD해서 [B, T_max]
+    tgt_input_batch = pad_sequence(tgt_input_list, batch_first=True, padding_value=pad_idx)
+    # tgt_input의 각 sequence는 [BOS]가 추가되어 src보다 길이가 1 크므로,
+    # padding 후 shape은 [B, T_max], T_max = max(lengths) + 1.
+    
+    # tgt_label_list를 PAD해서 [B, T_max]
+    tgt_label_batch = pad_sequence(tgt_label_list, batch_first=True, padding_value=pad_idx)
+    # tgt_label의 각 sequence는 [EOS]가 추가되어 src보다 길이가 1 크므로,
+    # padding 후 shape은 [B, T_max], T_max = max(lengths) + 1.
+
+    return src_batch, tgt_input_batch, tgt_label_batch
 
 
 # 14. Training Loop
@@ -368,6 +414,7 @@ for step in range(num_steps):
 
 # 15. Training-time prediction test
 test_batch_size = 1
+seq_len = 5
 model.eval()
 # 위에서 학습시킨 모델을 그대로 가져와서 batch_size만 1로 바꾸고 추론. 즉 teacher forcing 학습이 제대로 됐는지 체크.
 with torch.no_grad():
@@ -463,53 +510,6 @@ print("tgt_input:           ", test_tgt_input)
 print("tgt_label:           ", test_tgt_label)
 print("teacher prediction:  ", teacher_prediction)
 print("autoregressive:      ", generated)
-
-
-
-# 18. generate_variable_copy_batch
-def generate_variable_copy_batch(
-    lengths,
-    vocab_size,
-    bos_idx,
-    eos_idx,
-    pad_idx,
-    device
-):
-
-    src_list = []
-    tgt_input_list = []
-    tgt_label_list = []
- 
-    for length in lengths: # lengths는 각 sequence의 길이를 알려주는 1차원 배열
-
-        src = torch.randint(3, vocab_size, (length, ), device=device)
-
-        tgt_input = F.pad(src, (1,0), value=bos_idx) # (1,0)을 하면 앞에 하나 추가
-        tgt_label = F.pad(src, (0,1), value=eos_idx) # (0,1)을 하면 뒤에 하나 추가
-
-        src_list.append(src)
-        tgt_input_list.append(tgt_input)
-        tgt_label_list.append(tgt_label)
-        # 각 리스트에 추가
-
-    # src_list를 PAD해서 [B, S_max]
-    src_batch = pad_sequence(src_list, batch_first=True, padding_value=pad_idx) 
-    # batch_first=True로 output을 [B, S_max] 형태로 만들고, 
-    # S_max는 src_list에서 가장 긴 sequence 길이(max(lengths)). 
-    # 짧은 sequence의 오른쪽 부족한 부분은 pad_idx로 채움.
-
-    # tgt_input_list를 PAD해서 [B, T_max]
-    tgt_input_batch = pad_sequence(tgt_input_list, batch_first=True, padding_value=pad_idx)
-    # tgt_input의 각 sequence는 [BOS]가 추가되어 src보다 길이가 1 크므로,
-    # padding 후 shape은 [B, T_max], T_max = max(lengths) + 1.
-    
-    # tgt_label_list를 PAD해서 [B, T_max]
-    tgt_label_batch = pad_sequence(tgt_label_list, batch_first=True, padding_value=pad_idx)
-    # tgt_label의 각 sequence는 [EOS]가 추가되어 src보다 길이가 1 크므로,
-    # padding 후 shape은 [B, T_max], T_max = max(lengths) + 1.
-
-    return src_batch, tgt_input_batch, tgt_label_batch
-
 
 
 
