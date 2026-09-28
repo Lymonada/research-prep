@@ -70,10 +70,10 @@ Token IDs는 정수 인덱스이고, embedding 이후 tensor는 연속값 repres
 
 ### 2.2 Source side
 
-`src token ids [B,S]`
-→ `src_token_embedding`: lookup × √D → `[B,S,D]`
-→ `src_positional_encoding`: PE를 더함 → `[B,S,D]`
-→ `encoder`: EncoderBlock × N → `encoder_output [B,S,D]`
+`src token ids [B,S]`  
+→ `src_token_embedding`: lookup × √D → `[B,S,D]`  
+→ `src_positional_encoding`: PE를 더함 → `[B,S,D]`  
+→ `encoder`: EncoderBlock × N → `encoder_output [B,S,D]`  
 
 별도 mask 경로:
 
@@ -91,11 +91,11 @@ Mask는 embedding 값에서 추정하지 않는다. **원래 token ID를 PAD ID�
 
 ### 2.3 Target side와 output
 
-`tgt token ids [B,T]`
-→ `tgt_token_embedding`: lookup × √D → `[B,T,D]`
-→ `tgt_positional_encoding` → `[B,T,D]`
-→ `decoder(tgt_x, encoder_output, tgt_mask, src_mask)` → `[B,T,D]`
-→ `output_linear: Linear(D,V_tgt)` → `vocab_logits [B,T,V_tgt]`
+`tgt token ids [B,T]`  
+→ `tgt_token_embedding`: lookup × √D → `[B,T,D]`  
+→ `tgt_positional_encoding` → `[B,T,D]`  
+→ `decoder(tgt_x, encoder_output, tgt_mask, src_mask)` → `[B,T,D]`  
+→ `output_linear: Linear(D,V_tgt)` → `vocab_logits [B,T,V_tgt]`  
 
 별도 mask 경로:
 
