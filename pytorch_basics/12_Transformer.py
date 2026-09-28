@@ -3,6 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 
 
 # 1. Token Embedding
@@ -336,8 +337,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 model = Transformer(vocab_size, vocab_size, d_model, num_heads, d_ff, num_layers, pad_idx).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-loss_function = nn.CrossEntropyLoss()
-
+loss_function = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
 for step in range(num_steps):
 
@@ -364,7 +364,7 @@ for step in range(num_steps):
 # 15. Training-time prediction test
 test_batch_size = 1
 model.eval()
-# 위에서 학습시킨 모델을 그대로 가져와서 batch_size만 1로 바꾸고 추론.
+# 위에서 학습시킨 모델을 그대로 가져와서 batch_size만 1로 바꾸고 추론. 즉 teacher forcing 학습이 제대로 됐는지 체크.
 with torch.no_grad():
     src, tgt_input, tgt_label = generate_copy_batch(test_batch_size, seq_len, vocab_size, bos_idx, eos_idx, device)
     vocab_logits,encoder_attn_weights,decoder_self_attn_weights,decoder_cross_attn_weights = model(src, tgt_input)
@@ -388,7 +388,7 @@ def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device, pad_idx)
     generated = torch.full((batch_size, 1), bos_idx, dtype=torch.long, device=device)
     # model에 넣어줄 target sequence로 [BOS]만 있는 텐서 넣기
 
-    finished = torch.zeros(batch_size, dtype=torch.bool, device=device) # 텐서 하나를 만들어서 batch의 모든 문장이 EOS로 끝났는지 추적
+    finished = torch.zeros(batch_size, dtype=torch.bool, device=device) # 텐서 하나를 만들어서 batch의 각 sequence가 EOS를 생성해 종료되었는지 개별적으로 추적
 
     # 최대 max_new_tokens개의 새로운 token을 autoregressive하게 생성
     for tokens in range(max_new_tokens):
@@ -400,7 +400,9 @@ def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device, pad_idx)
         next_token = next_token_logits.argmax(dim=-1) # next_token_logits에서 가장 큰 값의 인덱스는 모델이 예상한 다음 token id. next_token: [B]
         
         # 이전 step에서 이미 EOS를 생성한 sequence는 이제 PAD만 추가
-        next_token = torch.where(
+        next_token = torch.where( # finished 텐서의 값 중 true인 위치에는 torch.full_like(next_token, pad_idx)에서 채워넣고 false면 next_token에서 채워넣기.
+        # 즉, 문장이 EOS를 마지막으로 생성해서 끝난상태면 pad token id를 next_token으로 하고, 아니면 그대로 next_token에서 가져옴.
+        # finished=True -> pad_idx, False -> 모델이 예측한 next_token 유지
             finished,
             torch.full_like(next_token, pad_idx),
             next_token
@@ -421,9 +423,9 @@ def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device, pad_idx)
 
 # 17. Teacher-forcing vs Autoregressive Inference Test
 
-# 새로운 테스트용 copy sample 1개 생성
+# 새로운 테스트용 copy batch 생성
 test_src, test_tgt_input, test_tgt_label = generate_copy_batch(
-    batch_size=1,
+    batch_size=4,
     seq_len=seq_len,
     vocab_size=vocab_size,
     bos_idx=bos_idx,
@@ -447,7 +449,8 @@ generated = greedy_decode(
     bos_idx,
     eos_idx,
     max_new_tokens,
-    device
+    device,
+    pad_idx
 )
 
 print("src:                 ", test_src)
@@ -455,6 +458,97 @@ print("tgt_input:           ", test_tgt_input)
 print("tgt_label:           ", test_tgt_label)
 print("teacher prediction:  ", teacher_prediction)
 print("autoregressive:      ", generated)
+
+
+
+# 18. generate_variable_copy_batch
+def generate_variable_copy_batch(
+    lengths,
+    vocab_size,
+    bos_idx,
+    eos_idx,
+    pad_idx,
+    device
+):
+
+    src_list = []
+    tgt_input_list = []
+    tgt_label_list = []
+ 
+    for length in lengths: # lengths는 각 sequence의 길이를 알려주는 1차원 배열
+
+        src = torch.randint(3, vocab_size, (length, ), device=device)
+
+        tgt_input = F.pad(src, (1,0), value=bos_idx) # (1,0)을 하면 앞에 하나 추가
+        tgt_label = F.pad(src, (0,1), value=eos_idx) # (0,1)을 하면 뒤에 하나 추가
+
+        src_list.append(src)
+        tgt_input_list.append(tgt_input)
+        tgt_label_list.append(tgt_label)
+        # 각 리스트에 추가
+
+    # src_list를 PAD해서 [B, S_max]
+    src_batch = pad_sequence(src_list, batch_first=True, padding_value=pad_idx) 
+    # batch_first=True로 output을 [B, S_max] 형태로 만들고, 
+    # S_max는 src_list에서 가장 긴 sequence 길이(max(lengths)). 
+    # 짧은 sequence의 오른쪽 부족한 부분은 pad_idx로 채움.
+
+    # tgt_input_list를 PAD해서 [B, T_max]
+    tgt_input_batch = pad_sequence(tgt_input_list, batch_first=True, padding_value=pad_idx)
+    # tgt_input의 각 sequence는 [BOS]가 추가되어 src보다 길이가 1 크므로,
+    # padding 후 shape은 [B, T_max], T_max = max(lengths) + 1.
+    
+    # tgt_label_list를 PAD해서 [B, T_max]
+    tgt_label_batch = pad_sequence(tgt_label_list, batch_first=True, padding_value=pad_idx)
+    # tgt_label의 각 sequence는 [EOS]가 추가되어 src보다 길이가 1 크므로,
+    # padding 후 shape은 [B, T_max], T_max = max(lengths) + 1.
+
+    return src_batch, tgt_input_batch, tgt_label_batch
+
+
+
+
+
+
+# 19. Variable-length Teacher-forcing vs Autoregressive Inference Test
+
+lengths = [2, 5, 3, 4] # lengths 배열의 길이가 자연스럽게 batch_size가 됨.
+
+test_src, test_tgt_input, test_tgt_label = generate_variable_copy_batch( # test_src: [B,S_max] test_tgt_input,test_tgt_label: [B,T_max]
+    lengths=lengths,
+    vocab_size=vocab_size,
+    bos_idx=bos_idx,
+    eos_idx=eos_idx,
+    pad_idx=pad_idx,
+    device=device
+)
+
+# 1) Teacher-forcing prediction
+model.eval()
+
+with torch.no_grad():
+    vocab_logits, _, _, _ = model(test_src, test_tgt_input)
+    teacher_prediction = vocab_logits.argmax(dim=-1)
+
+# 2) Autoregressive prediction
+max_new_tokens = max(lengths) + 1
+
+generated = greedy_decode(
+    model,
+    test_src,
+    bos_idx,
+    eos_idx,
+    max_new_tokens,
+    device,
+    pad_idx
+)
+
+print("src:                 \n", test_src)
+print("tgt_input:           \n", test_tgt_input)
+print("tgt_label:           \n", test_tgt_label)
+print("teacher prediction:  \n", teacher_prediction)
+print("autoregressive:      \n", generated)
+
 
 
 
