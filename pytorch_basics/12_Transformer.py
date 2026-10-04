@@ -403,9 +403,7 @@ class Transformer(nn.Module):
 # 13. Fixed-Length Copy Task Batch
 def generate_copy_batch(batch_size, seq_len, vocab_size, bos_idx, eos_idx, device):
     src = torch.randint(3, vocab_size, (batch_size, seq_len), device=device)
-
     tgt_input = F.pad(src, (1, 0), value=bos_idx) # (1,0)을 하면 앞에 하나 추가
-
     tgt_label = F.pad(src, (0, 1), value=eos_idx) # (0,1)을 하면 뒤에 하나 추가
 
     # src: [B, S]
@@ -491,12 +489,8 @@ def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device, pad_idx)
 
         # 이전 step에서 이미 EOS를 생성한 sequence는 이제 PAD만 추가
         next_token = torch.where(
-            # finished 텐서의 값 중 true인 위치에는
-            # torch.full_like(next_token, pad_idx)에서 채워넣고
-            # false면 next_token에서 채워넣기.
-            # 즉, 문장이 EOS를 마지막으로 생성해서 끝난상태면
-            # pad token id를 next_token으로 하고,
-            # 아니면 그대로 next_token에서 가져옴.
+            # finished 텐서의 값 중 true인 위치에는 torch.full_like(next_token, pad_idx)에서 채워넣고 false면 next_token에서 채워넣기.
+            # 즉, 문장이 EOS를 마지막으로 생성해서 끝난상태면 pad token id를 next_token으로 하고, 아니면 그대로 next_token에서 가져옴.
             # finished=True -> pad_idx
             # finished=False -> 모델이 예측한 next_token 유지
             finished,
