@@ -412,7 +412,7 @@ Greedy는 매 step 현재 score가 가장 높은 token 하나를 선택한다. �
 
 | 검증 단계 | 노트북에서 확인한 내용 |
 | --- | --- |
-| Attention 단독 | T_q≠T_k, d_k≠d_v 상황의 shape와 weights 합 |
+| Attention 단독 | T_q ≠ T_k, d_k ≠ d_v 상황의 shape와 weights 합 |
 | MHA / Encoder / Decoder | Head 분리·결합 및 layer별 output/weights shape |
 | Mask | 미래 key와 PAD key의 attention weight가 0 |
 | Output / Loss | `[2,5,30] → [10,30]`, label `[2,5] → [10]`, scalar CE |
