@@ -345,13 +345,13 @@ def generate_variable_copy_batch(
         # 각 리스트에 추가
 
     # src_list를 PAD해서 [B, S_max]
-    src_batch = pad_sequence(src_list, batch_first=True, padding_value=pad_idx) 
+    src_batch = pad_sequence(src_list, batch_first=True, padding_value=pad_idx) # pad_sequence가 입력받은 리스트에서 각 텐서의 길이 중 가장 큰 값을 찾아냄.
     # batch_first=True로 output을 [B, S_max] 형태로 만들고, 
     # S_max는 src_list에서 가장 긴 sequence 길이(max(lengths)). 
     # 짧은 sequence의 오른쪽 부족한 부분은 pad_idx로 채움.
 
     # tgt_input_list를 PAD해서 [B, T_max]
-    tgt_input_batch = pad_sequence(tgt_input_list, batch_first=True, padding_value=pad_idx)
+    tgt_input_batch = pad_sequence(tgt_input_list, batch_first=True, padding_value=pad_idx) 
     # tgt_input의 각 sequence는 [BOS]가 추가되어 src보다 길이가 1 크므로,
     # padding 후 shape은 [B, T_max], T_max = max(lengths) + 1.
     
