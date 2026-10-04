@@ -245,7 +245,7 @@ def create_causal_mask(seq_len, device): # Decoder self-attention에서 미래 t
 def create_padding_mask(seq, pad_idx): # 현재 K/V를 제공하는 sequence의 PAD 위치를 아무 Query도 참고하지 못하게 함.
 
     # seq 텐서와 PAD token의 정수 id를 받음. seq: [B, T_k]
-    mask = seq != pad_idx 
+    mask = seq != pad_idx # pad_idx가 아닌 원소는 True, pad_idx랑 같으면 False를 가지는 텐서를 만들어줌 = mask
     mask = mask.unsqueeze(1).unsqueeze(2) # mask: [B, 1, 1, T_k] -> # head dimension과 query dimension에 broadcasting되도록 함.
     # 왜냐면 모든 head의 모든 query에서 PAD key를 참고하지 못하게 해야해서.
 
