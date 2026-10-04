@@ -328,7 +328,7 @@ Decoder hidden state `[B,T,D]`는 source와 target prefix를 반영한 contextua
 → `CrossEntropyLoss` with `tgt_label.reshape(-1) [B*T]`
 → scalar loss.
 
-Logits와 label은 같은 batch/position 순서로 펴진다. CE에는 softmax를 먼저 적용하지 않고 raw logits를 전달한다. 기본 mean reduction에서는 PAD가 아닌 label 위치들의 loss를 평균하므로, 각 문장을 동일 비중으로 평균하는 것과는 다를 수 있다.
+Logits와 label은 같은 batch/position 순서로 펴진다. CE에는 softmax를 먼저 적용하지 않고 raw logits를 전달한다. 기본 mean reduction에서는 PAD가 아닌 label 위치들의 loss를 평균하므로, 각 문장을 동일 비중으로 평균하는 것과는 다를 수 있다. 즉, 모든 문장을 1/B씩 똑같은 가중치로 반영하는 게 아니라 유효한 토큰이 많이 들어있는 긴 문장이 자연스럽게 이번 스텝의 파라미터 업데이트에 더 큰 영향력을 행사하게 된다.
 
 학습 loop의 역할:
 
