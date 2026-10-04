@@ -437,7 +437,6 @@ def generate_variable_copy_batch(lengths, vocab_size, bos_idx, eos_idx, pad_idx,
     # src_list를 PAD해서 [B, S_max]
     # pad_sequence가 입력받은 리스트에서 각 텐서의 길이 중 가장 큰 값을 찾아냄.
     src_batch = pad_sequence(src_list, batch_first=True, padding_value=pad_idx)
-
     # batch_first=True로 output을 [B, S_max] 형태로 만들고,
     # S_max는 src_list에서 가장 긴 sequence 길이(max(lengths)).
     # 짧은 sequence의 오른쪽 부족한 부분은 pad_idx로 채움.
@@ -466,29 +465,17 @@ def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device, pad_idx)
     batch_size = src.shape[0]
 
     # [B, 1] 크기로 bos_idx 채우기
-    generated = torch.full(
-        (batch_size, 1),
-        bos_idx,
-        dtype=torch.long,
-        device=device
-    )
+    generated = torch.full((batch_size, 1), bos_idx, dtype=torch.long, device=device)
 
     # model에 넣어줄 target sequence로 [BOS]만 있는 텐서 넣기
 
     # 텐서 하나를 만들어서 batch의 각 sequence가
     # EOS를 생성해 종료되었는지 개별적으로 추적
-    finished = torch.zeros(
-        batch_size,
-        dtype=torch.bool,
-        device=device
-    )
+    finished = torch.zeros(batch_size, dtype=torch.bool, device=device)
 
     # 최대 max_new_tokens개의 새로운 token을 autoregressive하게 생성
     for tokens in range(max_new_tokens):
-        vocab_logits, _, _, _ = model(
-            src,
-            generated
-        )
+        vocab_logits, _, _, _ = model(src, generated)
 
         # next_token_logits: [B, vocab_size]
         next_token_logits = vocab_logits[:, -1, :]
@@ -526,10 +513,7 @@ def greedy_decode(model, src, bos_idx, eos_idx, max_new_tokens, device, pad_idx)
 
         # generated와 next_token을 붙임.
         # generated: [B, current_length+1]
-        generated = torch.cat(
-            [generated, next_token],
-            dim=1
-        )
+        generated = torch.cat([generated, next_token], dim=1)
 
         # finished 텐서안의 값이 모두 true면 break
         if finished.all():
@@ -562,30 +546,13 @@ if __name__ == "__main__":
     learning_rate = 1e-3
     num_steps = 1000
 
-    device = (
-        torch.device("cuda")
-        if torch.cuda.is_available()
-        else torch.device("cpu")
-    )
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-    model = Transformer(
-        src_vocab_size=vocab_size,
-        tgt_vocab_size=vocab_size,
-        d_model=d_model,
-        num_heads=num_heads,
-        d_ff=d_ff,
-        num_layers=num_layers,
-        pad_idx=pad_idx
-    ).to(device)
+    model = Transformer(src_vocab_size=vocab_size, tgt_vocab_size=vocab_size, d_model=d_model, num_heads=num_heads, d_ff=d_ff, num_layers=num_layers, pad_idx=pad_idx).to(device)
 
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=learning_rate
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    loss_function = nn.CrossEntropyLoss(
-        ignore_index=pad_idx
-    )
+    loss_function = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
 
     #################
@@ -596,14 +563,7 @@ if __name__ == "__main__":
 
     for step in range(num_steps):
 
-        train_src, train_tgt_input, train_tgt_label = generate_variable_copy_batch(
-            lengths=lengths,
-            vocab_size=vocab_size,
-            bos_idx=bos_idx,
-            eos_idx=eos_idx,
-            pad_idx=pad_idx,
-            device=device
-        )
+        train_src, train_tgt_input, train_tgt_label = generate_variable_copy_batch(lengths=lengths, vocab_size=vocab_size, bos_idx=bos_idx, eos_idx=eos_idx, pad_idx=pad_idx, device=device)
 
         # train_src: [B, S_max]
         # train_tgt_input: [B, T_max]
@@ -611,26 +571,17 @@ if __name__ == "__main__":
 
         optimizer.zero_grad()
 
-        vocab_logits, _, _, _ = model(
-            train_src,
-            train_tgt_input
-        )
+        vocab_logits, _, _, _ = model(train_src, train_tgt_input)
 
         # vocab_logits: [B, T_max, vocab_size]
         # CrossEntropyLoss에 넣기 위해
         # [B, T_max, vocab_size] -> [B*T_max, vocab_size]
-        logits = vocab_logits.reshape(
-            -1,
-            vocab_logits.size(-1)
-        )
+        logits = vocab_logits.reshape(-1, vocab_logits.size(-1))
 
         # [B, T_max] -> [B*T_max]
         label = train_tgt_label.reshape(-1)
 
-        loss = loss_function(
-            logits,
-            label
-        )
+        loss = loss_function(logits, label)
 
         loss.backward()
         optimizer.step()
@@ -646,14 +597,7 @@ if __name__ == "__main__":
     # lengths 배열의 길이가 자연스럽게 batch_size가 됨.
     test_lengths = [2, 5, 3, 4]
 
-    test_src, test_tgt_input, test_tgt_label = generate_variable_copy_batch(
-        lengths=test_lengths,
-        vocab_size=vocab_size,
-        bos_idx=bos_idx,
-        eos_idx=eos_idx,
-        pad_idx=pad_idx,
-        device=device
-    )
+    test_src, test_tgt_input, test_tgt_label = generate_variable_copy_batch(lengths=test_lengths, vocab_size=vocab_size, bos_idx=bos_idx, eos_idx=eos_idx, pad_idx=pad_idx, device=device)
 
     # test_src: [B, S_max]
     # test_tgt_input / test_tgt_label: [B, T_max]
@@ -663,28 +607,14 @@ if __name__ == "__main__":
     model.eval()
 
     with torch.no_grad():
-        vocab_logits, _, _, _ = model(
-            test_src,
-            test_tgt_input
-        )
-
-        teacher_prediction = vocab_logits.argmax(
-            dim=-1
-        )
+        vocab_logits, _, _, _ = model(test_src, test_tgt_input)
+        teacher_prediction = vocab_logits.argmax(dim=-1)
 
 
     # 2) Autoregressive prediction
     max_new_tokens = max(test_lengths) + 1
 
-    generated = greedy_decode(
-        model=model,
-        src=test_src,
-        bos_idx=bos_idx,
-        eos_idx=eos_idx,
-        max_new_tokens=max_new_tokens,
-        device=device,
-        pad_idx=pad_idx
-    )
+    generated = greedy_decode(model=model, src=test_src, bos_idx=bos_idx, eos_idx=eos_idx, max_new_tokens=max_new_tokens, device=device, pad_idx=pad_idx)
 
 
     print("\n================ Final Test ================\n")
