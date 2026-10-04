@@ -1369,9 +1369,9 @@ T × T lower triangular matrix
 예:
 
 ```text
+T F F F
 T T F F
 T T T F
-T T T T
 T T T T
 ```
 
