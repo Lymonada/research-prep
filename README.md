@@ -17,7 +17,7 @@ Implemented the core components of an encoder–decoder Transformer using PyTorc
 - Padding and causal attention masks
 - Training on a sequence-copy task and autoregressive greedy decoding for variable-length batches
 
-**[Implementation](pytorch_basics/12_Transformer.py) · [Detailed notes](notes/10_Transformer_Implementation_Final_Notes.md)**
+**[Implementation](pytorch_basics/12_Transformer.py) · [Colab notebook](notebooks/Transformer.ipynb) · [Detailed notes](notes/10_Transformer_Implementation_Final_Notes.md)**
 
 ### 2. Mini Retrieval-Augmented Generation (RAG) Pipeline
 
@@ -34,7 +34,7 @@ Markdown files -> overlapping word chunks + source metadata
 - Used `all-MiniLM-L6-v2` to embed document chunks and questions.
 - Ran a simple with/without-context test to check whether the generated answer depended on retrieved information.
 
-**[Implementation](pytorch_basics/13_mini_RAG.py) · [Retrieval notes](notes/11_Mini%20RAG%20Retrieval%20Pipeline.md) · [Generation notes](notes/12_Mini%20RAG%20Augmentation%20and%20Generation.md)**
+**[Implementation](pytorch_basics/13_mini_RAG.py) · [Colab notebook](notebooks/mini_RAG.ipynb) · [Retrieval notes](notes/11_Mini%20RAG%20Retrieval%20Pipeline.md) · [Generation notes](notes/12_Mini%20RAG%20Augmentation%20and%20Generation.md)**
 
 ### 3. CNN Architecture & Transfer Learning Experiments (CIFAR-10)
 
@@ -65,6 +65,7 @@ Code: [Basic CNN](pytorch_basics/06_CNN_CIFAR10.py) · [Deeper CNN](pytorch_basi
 research-prep/
 ├── python_basics/   # Python utilities and experimentation practice
 ├── pytorch_basics/  # Model implementations and training scripts
+├── notebooks/       # Original-style Colab learning and experiment records
 ├── notes/           # Concept explanations and experiment write-ups
 ├── results/         # Saved experiment summaries
 ├── plots/           # Training and prediction visualizations
@@ -73,7 +74,7 @@ research-prep/
 
 ## Notes on Running the Code
 
-- The repository consists of **standalone learning scripts**, not a single installable package. The accompanying notes explain the experiments and their assumptions.
+- The repository consists of **standalone learning scripts and Colab notebooks**, not a single installable package. The notebooks preserve step-by-step learning tests and comments; the accompanying notes explain the experiments and their assumptions.
 - Dependencies vary by example and include packages such as `torch`, `torchvision`, `sentence-transformers`, `openai`, `pandas`, and `matplotlib`.
 - The Mini RAG script was developed for **Google Colab** and loads an `OPENROUTER_API_KEY` from Colab Secrets. Running it requires external model downloads and API access. Do not commit API keys.
 
